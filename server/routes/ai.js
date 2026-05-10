@@ -137,48 +137,67 @@ const getMockResponse = (prompt) => {
 
 // ─── OpenRouter AI Call ───────────────────────────────────────────────────────
 // Returns the AI text response, or null if no API key / call fails
-const callAI = async (prompt, maxTokens = 1000) => {
+const callAI = async (prompt, maxTokens = 1500) => {
   const apiKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
+  const model  = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
   if (!apiKey || apiKey.trim() === '' || apiKey.includes('your_')) {
-    console.log('No valid AI API key — skipping AI call, using fallback chain.');
+    console.log('No valid AI API key — skipping AI call, using OSM fallback chain.');
     return null;
   }
   try {
+    console.log(`Calling AI model: ${model}`);
     const response = await axios.post(
       'https://openrouter.ai/api/v1/chat/completions',
       {
-        model: 'meta-llama/llama-3.1-8b-instruct:free',
+        model,
         max_tokens: maxTokens,
-        messages: [{ role: 'user', content: prompt }]
+        temperature: 0.3,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert Indian travel guide. Always respond with ONLY valid JSON, no markdown, no explanation, no code blocks.'
+          },
+          { role: 'user', content: prompt }
+        ]
       },
       {
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': 'http://localhost:5173',
-          'X-Title': 'Traveloop'
-        }
+          'X-Title': 'Traveloop India'
+        },
+        timeout: 20000
       }
     );
-    return response.data.choices[0].message.content;
+    const content = response.data.choices[0].message.content;
+    console.log('AI responded successfully.');
+    return content;
   } catch (error) {
-    console.error('AI API failed:', error.message);
+    console.error('AI API failed:', error.response?.data?.error?.message || error.message);
     return null;
   }
 };
 
+// ─── Robust JSON Extractor ────────────────────────────────────────────────────
 function extractJSON(text) {
   if (!text) return {};
   try {
-    const start = text.indexOf('{');
-    const end   = text.lastIndexOf('}') + 1;
-    if (start === -1 || end === 0) throw new Error('No JSON structure found');
-    return JSON.parse(text.substring(start, end));
+    // Strip markdown code blocks if present
+    let cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+    // Find the first complete JSON object
+    const start = cleaned.indexOf('{');
+    const end   = cleaned.lastIndexOf('}') + 1;
+    if (start === -1 || end === 0) throw new Error('No JSON object found');
+    const jsonStr = cleaned.substring(start, end);
+    return JSON.parse(jsonStr);
   } catch (e) {
-    console.error('Failed to parse JSON from AI response.', e.message);
+    console.error('Failed to parse AI JSON:', e.message);
     return {};
   }
 }
+
+
 
 // ─── OSM-Based Dynamic Nearby Places (reads full trip context) ─────────────────
 const fetchNearbyFromOSM = async (cityName, tripContext = {}) => {
