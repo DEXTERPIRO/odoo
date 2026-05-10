@@ -75,8 +75,11 @@ router.get('/:id', auth, async (req, res) => {
 router.put('/:id', auth, async (req, res) => {
   try {
     const { name, description, startDate, endDate, totalBudget, coverPhoto, isPublic, status } = req.body;
+    // Verify ownership first, then update by unique id only
+    const existing = await prisma.trip.findFirst({ where: { id: req.params.id, userId: req.userId } });
+    if (!existing) return res.status(404).json({ error: 'Trip not found' });
     const trip = await prisma.trip.update({
-      where: { id: req.params.id, userId: req.userId },
+      where: { id: req.params.id },
       data: { name, description, startDate: startDate ? new Date(startDate) : undefined, endDate: endDate ? new Date(endDate) : undefined, totalBudget: totalBudget ? parseFloat(totalBudget) : undefined, coverPhoto, isPublic, status }
     });
     res.json(trip);
@@ -85,7 +88,9 @@ router.put('/:id', auth, async (req, res) => {
 
 router.delete('/:id', auth, async (req, res) => {
   try {
-    await prisma.trip.delete({ where: { id: req.params.id, userId: req.userId } });
+    // deleteMany supports compound where (non-unique fields) unlike delete
+    const result = await prisma.trip.deleteMany({ where: { id: req.params.id, userId: req.userId } });
+    if (result.count === 0) return res.status(404).json({ error: 'Trip not found or not authorized' });
     res.json({ message: 'Trip deleted successfully' });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
