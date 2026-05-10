@@ -153,8 +153,10 @@ export default function ItineraryBuilder() {
   const [actModal, setActModal]       = useState(null);
   const [aiLoading, setAiLoading]         = useState(false);
   const [aiResult, setAiResult]           = useState(null);
+  const [addedDays, setAddedDays]         = useState(new Set());
   const [stopsLoading, setStopsLoading]   = useState(false);
   const [stopsResult, setStopsResult]     = useState(null);
+  const [addedStops, setAddedStops]       = useState(new Set());
   const [viewers, setViewers]             = useState([]);
   const [collaborators, setCollaborators] = useState([]);
   const [aiHov, setAiHov]                 = useState(false);
@@ -232,6 +234,7 @@ export default function ItineraryBuilder() {
       } catch { /* skip failed */ }
     }
     toast.success(`Added ${added} activit${added !== 1 ? 'ies' : 'y'} to ${matchedStop.city}!`);
+    setAddedDays(prev => new Set(prev).add(day.dayNumber));
   };
   const handleAiSuggestStops = async () => {
     if (!trip?.stops?.length) {
@@ -275,6 +278,7 @@ export default function ItineraryBuilder() {
         } catch { /* skip */ }
       }
       toast.success(`Added stop: ${suggestion.name} with ${added} activit${added !== 1 ? 'ies' : 'y'}!`);
+      setAddedStops(prev => new Set(prev).add(suggestion.name));
     } catch (err) {
       toast.error('Failed to add stop');
     }
@@ -425,21 +429,30 @@ export default function ItineraryBuilder() {
               </div>
 
               {/* Days */}
-              {(aiResult.days || []).map(day => (
-                <div key={day.dayNumber} style={{ marginBottom: 24 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                    <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: N.bg, boxShadow: N.shadowInsetDeep, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: N.accent, flexShrink: 0 }}>{day.dayNumber}</div>
-                      <div>
-                        <div style={{ fontWeight: 700, color: N.fg, fontSize: 15 }}>Day {day.dayNumber} — {day.city}</div>
-                        <div style={{ fontSize: 12, color: N.muted, fontStyle: 'italic' }}>{day.theme}</div>
+                    const dayAdded = addedDays.has(day.dayNumber);
+                    return (
+                    <div key={day.dayNumber} style={{ marginBottom: 24, opacity: dayAdded ? 0.7 : 1, transition: 'opacity 0.3s' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: N.bg, boxShadow: dayAdded ? N.shadowInsetDeep : N.shadowInsetDeep, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: dayAdded ? N.accentSecondary : N.accent, flexShrink: 0 }}>{day.dayNumber}</div>
+                          <div>
+                            <div style={{ fontWeight: 700, color: N.fg, fontSize: 15 }}>Day {day.dayNumber} — {day.city}</div>
+                            <div style={{ fontSize: 12, color: N.muted, fontStyle: 'italic' }}>{day.theme}</div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => !dayAdded && handleAddDayToTrip(day)}
+                          disabled={dayAdded}
+                          style={{ ...btn, padding: '6px 14px', fontSize: 11, minHeight: 'auto', fontWeight: 700,
+                            boxShadow: dayAdded ? 'none' : N.shadowSm,
+                            background: dayAdded ? 'transparent' : undefined,
+                            color: dayAdded ? N.accentSecondary : N.accent,
+                            cursor: dayAdded ? 'default' : 'pointer',
+                            opacity: dayAdded ? 1 : 1,
+                          }}>
+                          {dayAdded ? '✓ Added' : '+ Add to Trip'}
+                        </button>
                       </div>
-                    </div>
-                    <button onClick={() => handleAddDayToTrip(day)}
-                      style={{ ...btn, padding: '6px 14px', fontSize: 11, minHeight: 'auto', boxShadow: N.shadowSm, color: N.accent, fontWeight: 700 }}>
-                      + Add to Trip
-                    </button>
-                  </div>
                   <div style={{ background: N.bg, boxShadow: N.shadowInsetSm, borderRadius: N.radiusInner, overflow: 'hidden' }}>
                     {(day.activities || []).map((a, idx) => (
                       <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', borderBottom: idx < day.activities.length - 1 ? `1px solid rgb(163,177,198,0.2)` : 'none', fontSize: 13, color: N.fg, alignItems: 'flex-start', gap: 10 }}>
@@ -457,7 +470,7 @@ export default function ItineraryBuilder() {
                   {day.budgetTip && <div style={{ fontSize: 12, color: N.warning, marginTop: 8, fontWeight: 600, paddingLeft: 4 }}>◆ {day.budgetTip}</div>}
                   <div style={{ fontSize: 11, color: N.muted, marginTop: 6, textAlign: 'right', fontWeight: 600 }}>Est. day cost: ₹{day.estimatedDayCost?.toLocaleString()}</div>
                 </div>
-              ))}
+              );})}
 
               {/* General tips */}
               {(aiResult.generalTips || []).length > 0 && (
@@ -492,8 +505,15 @@ export default function ItineraryBuilder() {
               </div>
 
               {/* Suggestions */}
-              {(stopsResult.suggestions || []).map((s, i) => (
-                <div key={i} style={{ ...cardSm, padding: '18px 20px', marginBottom: 16 }}>
+              {(stopsResult.suggestions || []).map((s, i) => {
+                const stopAdded = addedStops.has(s.name);
+                return (
+                <div key={i} style={{ ...cardSm, padding: '18px 20px', marginBottom: 16, opacity: stopAdded ? 0.75 : 1, transition: 'opacity 0.3s', position: 'relative' }}>
+                  {stopAdded && (
+                    <div style={{ position: 'absolute', top: 12, right: 12, background: N.bg, boxShadow: N.shadowInset, borderRadius: N.radiusPill, padding: '3px 12px', fontSize: 11, fontWeight: 800, color: N.accentSecondary }}>
+                      ✓ Added to Trip
+                    </div>
+                  )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
@@ -503,10 +523,12 @@ export default function ItineraryBuilder() {
                       <div style={{ fontSize: 11, color: N.muted, fontWeight: 600, marginBottom: 6 }}>Near: {s.nearestStop}</div>
                       <div style={{ fontSize: 13, color: N.fg, lineHeight: 1.5 }}>{s.description}</div>
                     </div>
-                    <button onClick={() => handleAddSuggestedStop(s)}
-                      style={{ ...btnPrimary, padding: '8px 16px', fontSize: 12, minHeight: 'auto', flexShrink: 0, marginLeft: 14, fontWeight: 700 }}>
-                      + Add as Stop
-                    </button>
+                    {!stopAdded && (
+                      <button onClick={() => handleAddSuggestedStop(s)}
+                        style={{ ...btnPrimary, padding: '8px 16px', fontSize: 12, minHeight: 'auto', flexShrink: 0, marginLeft: 14, fontWeight: 700 }}>
+                        + Add as Stop
+                      </button>
+                    )}
                   </div>
 
                   {/* Meta row */}
@@ -538,7 +560,7 @@ export default function ItineraryBuilder() {
                     </div>
                   )}
                 </div>
-              ))}
+              );})}
             </div>
           </div>
         )}
