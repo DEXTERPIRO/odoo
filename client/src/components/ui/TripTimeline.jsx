@@ -1,13 +1,14 @@
 import { useState } from 'react';
+import { N, cardSm, card } from '../../neu';
 
 const TYPE_COLORS = {
-  SIGHTSEEING: '#805ad5', // purple
-  FOOD: '#d97706',        // amber
-  ADVENTURE: '#e53e3e',   // red
-  TRANSPORT: '#718096',   // gray
-  ACCOMMODATION: '#3182ce',// blue
-  SHOPPING: '#d53f8c',    // pink
-  OTHER: '#38b2ac',       // teal
+  SIGHTSEEING: N.accent,
+  FOOD: N.warning,
+  ADVENTURE: N.danger,
+  TRANSPORT: N.muted,
+  ACCOMMODATION: '#8B5CF6',
+  SHOPPING: '#DB2777',
+  OTHER: N.accentSecondary,
 };
 
 const TYPE_LABELS = {
@@ -26,34 +27,34 @@ function ActivityItem({ activity }) {
 
   return (
     <div 
-      style={{ position: 'relative', display: 'flex', alignItems: 'center', padding: '10px 0', borderBottom: '1px dashed #e0e0e0', cursor: 'pointer' }}
+      style={{ position: 'relative', display: 'flex', alignItems: 'center', padding: '12px 14px', borderBottom: `1px dashed rgb(163,177,198,0.3)`, cursor: 'pointer', transition: N.transition }}
       onClick={(e) => { e.stopPropagation(); setShowPopup(!showPopup); }}
     >
-      <div style={{ width: 10, height: 10, borderRadius: '50%', background: color, marginRight: 16, flexShrink: 0, boxShadow: `0 0 0 3px ${color}33` }}></div>
+      <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, marginRight: 14, flexShrink: 0, boxShadow: `0 0 0 2px ${N.bg}, 0 0 0 4px ${color}33` }}></div>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: '#333' }}>{activity.name}</span>
-          <span style={{ fontSize: 14, fontWeight: 700, color: '#1D9E75' }}>{activity.cost > 0 ? `$${activity.cost}` : 'Free'}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: N.fg }}>{activity.name}</span>
+          <span style={{ fontSize: 13, fontWeight: 800, color: activity.cost > 0 ? N.fg : N.muted }}>{activity.cost > 0 ? `₹${activity.cost}` : 'Free'}</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-          <span style={{ fontSize: 11, background: `${color}15`, color: color, padding: '2px 8px', borderRadius: 12, fontWeight: 600 }}>{TYPE_LABELS[activity.type] || 'Other'}</span>
-          {activity.duration && <span style={{ fontSize: 12, color: '#888' }}>⏱ {activity.duration} min</span>}
-          {activity.date && <span style={{ fontSize: 12, color: '#888' }}>📅 {new Date(activity.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+          <span style={{ fontSize: 10, background: N.bg, boxShadow: N.shadowInsetSm, color: color, padding: '3px 8px', borderRadius: N.radiusPill, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5 }}>{TYPE_LABELS[activity.type] || 'Other'}</span>
+          {activity.duration && <span style={{ fontSize: 12, color: N.muted, fontWeight: 600 }}>{activity.duration}m</span>}
+          {activity.date && <span style={{ fontSize: 12, color: N.muted }}>{new Date(activity.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
         </div>
       </div>
       
       {showPopup && (
         <div style={{
           position: 'absolute', top: '100%', left: 26, right: 0, zIndex: 10,
-          background: '#fff', padding: 12, borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          border: `1px solid ${color}44`, marginTop: 4
+          background: N.bg, padding: 14, borderRadius: N.radiusInner, boxShadow: N.shadow,
+          border: `1px solid ${color}44`, marginTop: 6, fontFamily: N.font
         }} onClick={(e) => e.stopPropagation()}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{activity.name}</div>
-          {activity.notes && <div style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>{activity.notes}</div>}
-          <div style={{ fontSize: 12, color: '#888', display: 'flex', gap: 12 }}>
-            <span>💰 {activity.cost > 0 ? `$${activity.cost}` : 'Free'}</span>
-            <span>⏱ {activity.duration} min</span>
-            {activity.date && <span>🕒 {new Date(activity.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, color: N.fg }}>{activity.name}</div>
+          {activity.notes && <div style={{ fontSize: 12, color: N.muted, marginBottom: 10, lineHeight: 1.5 }}>{activity.notes}</div>}
+          <div style={{ fontSize: 12, color: N.muted, display: 'flex', gap: 12, fontWeight: 600 }}>
+            <span>{activity.cost > 0 ? `₹${activity.cost}` : 'Free'}</span>
+            <span>{activity.duration} min</span>
+            {activity.date && <span>{new Date(activity.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
           </div>
         </div>
       )}
@@ -61,49 +62,52 @@ function ActivityItem({ activity }) {
   );
 }
 
-function StopNode({ stop, isLast }) {
+function StopNode({ stop, isLast, index }) {
   const [expanded, setExpanded] = useState(true);
-  const initials = stop.city ? stop.city.charAt(0).toUpperCase() : '📍';
   
   return (
-    <div style={{ display: 'flex', position: 'relative', marginBottom: isLast ? 0 : 20 }}>
-      {/* Timeline track line */}
+    <div style={{ display: 'flex', position: 'relative', marginBottom: isLast ? 0 : 24 }}>
+      {/* Timeline track line - Inset groove */}
       {!isLast && (
-        <div style={{ position: 'absolute', left: 23, top: 48, bottom: -20, width: 2, background: '#1D9E75', zIndex: 1 }} className="timeline-line">
-          <div style={{ position: 'absolute', top: '50%', left: -8, background: '#fff', padding: '2px 0', fontSize: 16, transform: 'translateY(-50%)', color: '#1D9E75' }} title={`To next destination`}>✈️</div>
-        </div>
+        <div style={{ position: 'absolute', left: 23, top: 48, bottom: -24, width: 4, background: N.bg, boxShadow: N.shadowInsetDeep, zIndex: 1, borderRadius: 2 }} />
       )}
 
-      {/* Stop Marker */}
-      <div style={{ flexShrink: 0, width: 48, height: 48, borderRadius: '50%', background: '#1D9E75', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, zIndex: 2, boxShadow: '0 4px 10px rgba(29, 158, 117, 0.3)' }}>
-        {initials}
+      {/* Stop Marker - Extruded Circle */}
+      <div style={{ 
+        flexShrink: 0, width: 48, height: 48, borderRadius: '50%', background: N.bg, boxShadow: N.shadowSm, 
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 900, zIndex: 2, 
+        color: N.accent, fontFamily: N.fontDisplay, border: `2px solid ${N.bg}`
+      }}>
+        {index + 1}
       </div>
 
-      {/* Stop Content */}
-      <div style={{ flex: 1, marginLeft: 20, background: '#fff', borderRadius: 12, border: '1px solid #e0e0e0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+      {/* Stop Content - Extruded Card */}
+      <div style={{ flex: 1, marginLeft: 20, ...card, padding: 0, overflow: 'hidden' }}>
         {/* Stop Header (Clickable) */}
         <div 
-          style={{ padding: '16px 20px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8faf9' }}
+          style={{ padding: '16px 20px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: N.bg, borderBottom: expanded ? `1px solid rgb(163,177,198,0.2)` : 'none' }}
           onClick={() => setExpanded(!expanded)}
         >
           <div>
-            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#1a1a1a' }}>{stop.city}, {stop.country}</h3>
-            <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+            <h3 style={{ margin: '0 0 2px', fontSize: 18, fontWeight: 800, color: N.fg, fontFamily: N.fontDisplay }}>{stop.city}, {stop.country}</h3>
+            <div style={{ fontSize: 12, color: N.muted, fontWeight: 500 }}>
               {new Date(stop.startDate).toLocaleDateString()} → {new Date(stop.endDate).toLocaleDateString()}
             </div>
           </div>
-          <div style={{ color: '#888', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}>▼</div>
+          <div style={{ color: N.accent, fontWeight: 900, transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}>
+            ▼
+          </div>
         </div>
 
-        {/* Activities List (Expandable) */}
-        <div style={{ maxHeight: expanded ? 2000 : 0, overflow: 'hidden', transition: 'max-height 0.4s ease-in-out' }}>
-          <div style={{ padding: '0 20px 10px' }}>
+        {/* Activities List (Expandable) - Inset Well */}
+        <div style={{ maxHeight: expanded ? 2000 : 0, overflow: 'hidden', transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)', background: N.bg }}>
+          <div style={{ padding: '10px 20px 20px', boxShadow: N.shadowInsetSm, margin: '0 10px 10px', borderRadius: N.radiusInner }}>
             {stop.activities && stop.activities.length > 0 ? (
               stop.activities.map(activity => (
                 <ActivityItem key={activity.id} activity={activity} />
               ))
             ) : (
-              <div style={{ padding: '16px 0', color: '#aaa', fontSize: 13, fontStyle: 'italic' }}>No activities planned yet.</div>
+              <div style={{ padding: '20px 0', color: N.muted, fontSize: 13, textAlign: 'center', fontWeight: 600 }}>No activities planned yet.</div>
             )}
           </div>
         </div>
@@ -138,26 +142,27 @@ export default function TripTimeline({ trip }) {
   const citiesVisited = stops.length;
 
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ fontFamily: N.font }}>
       
-      {/* Progress Bar */}
-      <div style={{ background: '#fff', padding: 20, borderRadius: 12, border: '1px solid #e0e0e0', marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 8 }}>
+      {/* Progress Bar - Extruded Card */}
+      <div style={{ ...cardSm, marginBottom: 28, padding: '18px 24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, color: N.muted, marginBottom: 12 }}>
           <span>Total: {totalDays} Days</span>
           <span>Remaining: {totalDays - daysPassed} Days</span>
         </div>
-        <div style={{ height: 8, background: '#f0f0f0', borderRadius: 4, overflow: 'hidden' }}>
-          <div style={{ width: `${progressPct}%`, height: '100%', background: '#1D9E75', transition: 'width 1s ease-in-out' }}></div>
+        {/* Inset track */}
+        <div style={{ height: 8, background: N.bg, boxShadow: N.shadowInsetSm, borderRadius: N.radiusPill, overflow: 'hidden' }}>
+          <div style={{ width: `${progressPct}%`, height: '100%', background: N.accentSecondary, borderRadius: N.radiusPill, transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)' }}></div>
         </div>
-        {trip.status === 'ONGOING' && <div style={{ fontSize: 12, color: '#1D9E75', fontWeight: 600, marginTop: 8, textAlign: 'center' }}>Trip is currently ongoing! Day {daysPassed} of {totalDays}</div>}
+        {trip.status === 'ONGOING' && <div style={{ fontSize: 12, color: N.accentSecondary, fontWeight: 800, marginTop: 12, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.5 }}>◆ Trip Ongoing: Day {daysPassed} of {totalDays}</div>}
       </div>
 
       {/* Legend */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 24, padding: '0 10px' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 30, padding: '0 10px' }}>
         {Object.entries(TYPE_COLORS).map(([type, color]) => (
-          <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }}></div>
-            <span style={{ fontSize: 11, color: '#666', fontWeight: 600 }}>{TYPE_LABELS[type]}</span>
+          <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, boxShadow: `0 0 0 3px ${color}22` }}></div>
+            <span style={{ fontSize: 11, color: N.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>{TYPE_LABELS[type]}</span>
           </div>
         ))}
       </div>
@@ -165,24 +170,22 @@ export default function TripTimeline({ trip }) {
       {/* Timeline Nodes */}
       <div style={{ position: 'relative', paddingLeft: 10 }}>
         {stops.map((stop, index) => (
-          <StopNode key={stop.id} stop={stop} isLast={index === stops.length - 1} />
+          <StopNode key={stop.id} stop={stop} index={index} isLast={index === stops.length - 1} />
         ))}
       </div>
 
-      {/* Totals Summary */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', background: '#f8faf9', padding: '16px 24px', borderRadius: 12, marginTop: 30, border: '1px solid #e0e0e0' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#1a1a1a' }}>{citiesVisited}</div>
-          <div style={{ fontSize: 12, color: '#888', fontWeight: 600, textTransform: 'uppercase' }}>Cities</div>
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#1a1a1a' }}>{totalActivities}</div>
-          <div style={{ fontSize: 12, color: '#888', fontWeight: 600, textTransform: 'uppercase' }}>Activities</div>
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#1D9E75' }}>${totalEstimatedCost.toLocaleString()}</div>
-          <div style={{ fontSize: 12, color: '#888', fontWeight: 600, textTransform: 'uppercase' }}>Est. Cost</div>
-        </div>
+      {/* Totals Summary - Extruded Chips */}
+      <div style={{ display: 'flex', gap: 16, marginTop: 32 }}>
+        {[
+          { label: 'Cities', value: citiesVisited, color: N.fg },
+          { label: 'Activities', value: totalActivities, color: N.fg },
+          { label: 'Est. Cost', value: `₹${totalEstimatedCost.toLocaleString()}`, color: N.accent }
+        ].map((stat, i) => (
+          <div key={i} style={{ ...cardSm, flex: 1, padding: '16px', textAlign: 'center' }}>
+            <div style={{ fontSize: 24, fontWeight: 900, color: stat.color, fontFamily: N.fontDisplay }}>{stat.value}</div>
+            <div style={{ fontSize: 11, color: N.muted, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, marginTop: 4 }}>{stat.label}</div>
+          </div>
+        ))}
       </div>
 
     </div>

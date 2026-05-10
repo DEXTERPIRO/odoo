@@ -4,9 +4,10 @@ import { io } from 'socket.io-client';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import toast from 'react-hot-toast';
 import { tripsAPI } from '../api/trips';
+import { N, card, cardSm, btn, btnPrimary, input, label } from '../neu';
 
 const CATEGORIES = ['Flight', 'Hotel', 'Food', 'Transport', 'Shopping', 'Activities', 'Other'];
-const PIE_COLORS = ['#1D9E75', '#EF9F27', '#e53e3e', '#3182ce', '#805ad5', '#dd6b20', '#888'];
+const PIE_COLORS = [N.accent, N.warning, N.danger, N.muted, '#805ad5', '#dd6b20', '#888'];
 
 export default function Budget() {
   const { id } = useParams();
@@ -15,6 +16,7 @@ export default function Budget() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ category: 'Food', description: '', amount: '', date: new Date().toISOString().split('T')[0] });
   const [adding, setAdding] = useState(false);
+  const [focused, setFocused] = useState(null);
 
   const load = async () => {
     try {
@@ -55,121 +57,129 @@ export default function Budget() {
     } catch { toast.error('Failed to delete'); }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: 60, color: '#888' }}>Loading budget…</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: 60, color: N.muted, fontFamily: N.font, fontWeight: 600 }}>Loading budget…</div>;
 
   const pct = budget ? Math.min(budget.percentUsed, 100) : 0;
-  const statusColor = budget?.status === 'over' ? '#e53e3e' : budget?.status === 'warning' ? '#EF9F27' : '#1D9E75';
+  const statusColor = budget?.status === 'over' ? N.danger : budget?.status === 'warning' ? N.warning : N.accentSecondary;
   const pieData = budget ? Object.entries(budget.breakdown).filter(([, v]) => v > 0).map(([k, v]) => ({ name: k.charAt(0).toUpperCase() + k.slice(1), value: v })) : [];
 
+  const inp = (name) => ({
+    ...input, boxShadow: focused === name ? N.shadowInsetDeep : N.shadowInset,
+  });
+
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: '#1a1a1a' }}>💰 Budget & Expenses</h1>
+    <div style={{ fontFamily: N.font }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+        <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: N.fg, fontFamily: N.fontDisplay, letterSpacing: -0.5 }}>Budget & Expenses</h1>
         <div style={{ display: 'flex', gap: 10 }}>
-          <Link to={`/trips/${id}/view`} style={{ padding: '9px 16px', background: '#fff', border: '1.5px solid #e0e0e0', borderRadius: 8, textDecoration: 'none', color: '#333', fontSize: 13, fontWeight: 600 }}>← Itinerary</Link>
-          <Link to={`/trips/${id}/invoice`} style={{ padding: '9px 16px', background: '#1D9E75', color: '#fff', borderRadius: 8, textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>🧾 Invoice</Link>
+          <Link to={`/trips/${id}/view`} style={{ ...btn, padding: '10px 18px', minHeight: 'auto', textDecoration: 'none', color: N.muted, fontSize: 13 }}>← Itinerary</Link>
+          <Link to={`/trips/${id}/invoice`} style={{ ...btnPrimary, padding: '10px 18px', minHeight: 'auto', textDecoration: 'none', fontSize: 13 }}>Invoice</Link>
         </div>
       </div>
 
       {budget && (
-        <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+        <div style={{ ...card, padding: 24, marginBottom: 28 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
             {[
-              { label: 'Total Budget', value: `$${budget.totalBudget.toLocaleString()}`, color: '#1D9E75', sub: '100% of plan' },
-              { label: 'Total Spent', value: `$${budget.totalSpent.toLocaleString()}`, color: statusColor, sub: `${budget.percentUsed}% used` },
-              { label: 'Remaining', value: `$${Math.abs(budget.remaining).toLocaleString()}`, color: budget.remaining >= 0 ? '#1D9E75' : '#e53e3e', sub: budget.remaining >= 0 ? 'left to spend' : 'over budget!' },
+              { label: 'Total Budget', value: `₹${budget.totalBudget.toLocaleString()}`, color: N.accentSecondary, sub: '100% of plan' },
+              { label: 'Total Spent', value: `₹${budget.totalSpent.toLocaleString()}`, color: statusColor, sub: `${budget.percentUsed}% used` },
+              { label: 'Remaining', value: `₹${Math.abs(budget.remaining).toLocaleString()}`, color: budget.remaining >= 0 ? N.accentSecondary : N.danger, sub: budget.remaining >= 0 ? 'left to spend' : 'over budget!' },
             ].map(({ label, value, color, sub }) => (
-              <div key={label} style={{ background: '#fff', borderRadius: 12, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', textAlign: 'center' }}>
-                <div style={{ fontSize: 28, fontWeight: 800, color }}>{value}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#555', marginTop: 4 }}>{label}</div>
-                <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>{sub}</div>
+              <div key={label} style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 28, fontWeight: 900, color, fontFamily: N.fontDisplay }}>{value}</div>
+                <div style={{ fontSize: 11, fontWeight: 800, color: N.muted, marginTop: 6, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</div>
+                <div style={{ fontSize: 11, color: N.muted, marginTop: 4, fontWeight: 600 }}>{sub}</div>
               </div>
             ))}
           </div>
-          <div style={{ height: 10, background: '#f0f0f0', borderRadius: 99, marginBottom: 24 }}>
-            <div style={{ height: '100%', width: `${pct}%`, background: statusColor, borderRadius: 99, transition: 'width 0.5s' }} />
+          <div style={{ height: 10, background: N.bg, boxShadow: N.shadowInsetSm, borderRadius: N.radiusPill, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${pct}%`, background: statusColor, borderRadius: N.radiusPill, transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)' }} />
           </div>
-        </>
+        </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 28 }}>
         {pieData.length > 0 && (
-          <div style={{ background: '#fff', borderRadius: 12, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#1a1a1a' }}>Spending Breakdown</h3>
-            <ResponsiveContainer width="100%" height={220}>
+          <div style={{ ...cardSm, padding: 24 }}>
+            <h3 style={{ margin: '0 0 20px', fontSize: 18, fontWeight: 800, color: N.fg, fontFamily: N.fontDisplay }}>Spending Breakdown</h3>
+            <ResponsiveContainer width="100%" height={240}>
               <PieChart>
-                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={3}>
-                  {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={4}>
+                  {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke={N.bg} strokeWidth={2} />)}
                 </Pie>
-                <Tooltip formatter={v => `$${v.toFixed(2)}`} />
-                <Legend />
+                <Tooltip formatter={v => `₹${v.toFixed(2)}`} contentStyle={{ borderRadius: N.radiusInner, border: 'none', boxShadow: N.shadow, background: N.bg, fontWeight: 600, fontFamily: N.font }} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 12, fontWeight: 600, fontFamily: N.font, paddingTop: 10 }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         )}
-        <div style={{ background: '#fff', borderRadius: 12, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#1a1a1a' }}>Add Expense</h3>
+        
+        <div style={{ ...cardSm, padding: 24 }}>
+          <h3 style={{ margin: '0 0 20px', fontSize: 18, fontWeight: 800, color: N.fg, fontFamily: N.fontDisplay }}>Add Expense</h3>
           <form onSubmit={handleAdd}>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#555', marginBottom: 4 }}>Category</label>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>Category</label>
               <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e0e0e0', borderRadius: 8, fontSize: 14, outline: 'none' }}>
+                onFocus={() => setFocused('category')} onBlur={() => setFocused(null)}
+                style={inp('category')}>
                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#555', marginBottom: 4 }}>Description</label>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>Description</label>
               <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="e.g. Paris hotel 4 nights"
-                style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e0e0e0', borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                onFocus={() => setFocused('description')} onBlur={() => setFocused(null)}
+                style={inp('description')} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#555', marginBottom: 4 }}>Amount ($)</label>
-                <input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0.00" min="0" step="0.01"
-                  style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e0e0e0', borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                <label style={label}>Amount (₹)</label>
+                <input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0.00" min="0" step="1"
+                  onFocus={() => setFocused('amount')} onBlur={() => setFocused(null)}
+                  style={inp('amount')} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#555', marginBottom: 4 }}>Date</label>
+                <label style={label}>Date</label>
                 <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                  style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e0e0e0', borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                  onFocus={() => setFocused('date')} onBlur={() => setFocused(null)}
+                  style={inp('date')} />
               </div>
             </div>
-            <button type="submit" disabled={adding} style={{ width: '100%', padding: 11, background: '#1D9E75', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer', opacity: adding ? 0.7 : 1 }}>
+            <button type="submit" disabled={adding} style={{ ...btnPrimary, width: '100%', padding: '14px', minHeight: 'auto', opacity: adding ? 0.7 : 1 }}>
               {adding ? 'Adding…' : '+ Add Expense'}
             </button>
           </form>
         </div>
       </div>
 
-      <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f0f0' }}>
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#1a1a1a' }}>All Expenses ({expenses.length})</h3>
-        </div>
+      <div style={{ ...card, padding: 24 }}>
+        <h3 style={{ margin: '0 0 20px', fontSize: 18, fontWeight: 800, color: N.fg, fontFamily: N.fontDisplay }}>All Expenses ({expenses.length})</h3>
+        
         {expenses.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '32px', color: '#aaa' }}>No expenses yet</div>
+          <div style={{ background: N.bg, boxShadow: N.shadowInsetSm, borderRadius: N.radiusInner, padding: '32px', textAlign: 'center', color: N.muted, fontWeight: 600, fontSize: 13 }}>No expenses yet</div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: '#f8faf9' }}>
-                {['Date', 'Category', 'Description', 'Amount', ''].map(h => (
-                  <th key={h} style={{ padding: '10px 16px', textAlign: h === 'Amount' ? 'right' : 'left', color: '#666', fontWeight: 600 }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {expenses.map(e => (
-                <tr key={e.id} style={{ borderTop: '1px solid #f5f5f5' }}>
-                  <td style={{ padding: '10px 16px', color: '#888' }}>{new Date(e.date).toLocaleDateString()}</td>
-                  <td style={{ padding: '10px 16px' }}><span style={{ background: '#f0f4ff', color: '#4a5568', fontSize: 11, padding: '2px 8px', borderRadius: 20 }}>{e.category}</span></td>
-                  <td style={{ padding: '10px 16px', color: '#333' }}>{e.description}</td>
-                  <td style={{ padding: '10px 16px', textAlign: 'right', fontWeight: 600, color: '#1a1a1a' }}>${e.amount.toFixed(2)}</td>
-                  <td style={{ padding: '10px 16px', textAlign: 'right' }}>
-                    <button onClick={() => handleDelete(e.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e53e3e', fontSize: 16, padding: 0 }}>×</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div style={{ background: N.bg, boxShadow: N.shadowInsetSm, borderRadius: N.radiusInner, padding: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr 3fr 1.5fr 0.5fr', gap: 12, paddingBottom: 12, borderBottom: `1px solid rgb(163,177,198,0.2)`, fontSize: 11, fontWeight: 800, color: N.muted, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              <div>Date</div>
+              <div>Category</div>
+              <div>Description</div>
+              <div style={{ textAlign: 'right' }}>Amount</div>
+              <div></div>
+            </div>
+            {expenses.map((e, idx) => (
+              <div key={e.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr 3fr 1.5fr 0.5fr', gap: 12, padding: '14px 0', borderBottom: idx < expenses.length - 1 ? `1px dashed rgb(163,177,198,0.3)` : 'none', alignItems: 'center', fontSize: 13 }}>
+                <div style={{ color: N.muted, fontWeight: 600 }}>{new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
+                <div>
+                  <span style={{ background: N.bg, boxShadow: N.shadowSm, color: N.accent, fontSize: 10, padding: '4px 10px', borderRadius: N.radiusPill, fontWeight: 800, textTransform: 'uppercase' }}>{e.category}</span>
+                </div>
+                <div style={{ color: N.fg, fontWeight: 600 }}>{e.description}</div>
+                <div style={{ textAlign: 'right', fontWeight: 800, color: N.fg }}>₹{e.amount.toLocaleString()}</div>
+                <div style={{ textAlign: 'right' }}>
+                  <button onClick={() => handleDelete(e.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: N.danger, fontSize: 18, fontWeight: 700, padding: 0 }}>✕</button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
