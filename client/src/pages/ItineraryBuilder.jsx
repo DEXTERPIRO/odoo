@@ -80,6 +80,18 @@ function AddStopModal({ tripId, onClose, onAdded }) {
   );
 }
 
+/* ── Activity Input Field — top-level to avoid remount on keystroke ─────── */
+function ActInpField({ lbl, name, type = 'text', ph = '', f, setF, focused, setFocused }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <label style={label}>{lbl}</label>
+      <input type={type} value={f[name] ?? ''} onChange={e => setF(x => ({ ...x, [name]: e.target.value }))} placeholder={ph}
+        onFocus={() => setFocused(name)} onBlur={() => setFocused(null)}
+        style={{ ...input, boxShadow: focused === name ? N.shadowInsetDeep : N.shadowInset }} />
+    </div>
+  );
+}
+
 /* ── Add Activity Modal ────────────────────────────────────────────────────── */
 function AddActivityModal({ stop, onClose, onAdded }) {
   const [f, setF]           = useState({ name: '', type: 'SIGHTSEEING', cost: '', duration: '60', notes: '' });
@@ -93,15 +105,6 @@ function AddActivityModal({ stop, onClose, onAdded }) {
     finally { setLoading(false); }
   };
 
-  const InpField = ({ lbl, name, type = 'text', ph = '', style: extra = {} }) => (
-    <div style={{ marginBottom: 14 }}>
-      <label style={label}>{lbl}</label>
-      <input type={type} value={f[name]} onChange={e => setF(x => ({ ...x, [name]: e.target.value }))} placeholder={ph}
-        onFocus={() => setFocused(name)} onBlur={() => setFocused(null)}
-        style={{ ...input, boxShadow: focused === name ? N.shadowInsetDeep : N.shadowInset, ...extra }} />
-    </div>
-  );
-
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(61,72,82,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
       <div style={{ ...card, width: 420, maxWidth: '90vw' }}>
@@ -113,7 +116,7 @@ function AddActivityModal({ stop, onClose, onAdded }) {
           <button onClick={onClose} style={{ ...btn, padding: '6px 12px', boxShadow: N.shadowSm, fontSize: 16, minHeight: 'auto' }}>✕</button>
         </div>
         <form onSubmit={submit} noValidate>
-          <InpField lbl="Activity Name *" name="name" ph="e.g. Taj Mahal Visit" />
+          <ActInpField lbl="Activity Name *" name="name" ph="e.g. Taj Mahal Visit" f={f} setF={setF} focused={focused} setFocused={setFocused} />
           <div style={{ marginBottom: 14 }}>
             <label style={label}>Type</label>
             <select value={f.type} onChange={e => setF(x => ({ ...x, type: e.target.value }))}
@@ -123,10 +126,10 @@ function AddActivityModal({ stop, onClose, onAdded }) {
             </select>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <InpField lbl="Cost (₹)" name="cost" type="number" ph="500" />
-            <InpField lbl="Duration (min)" name="duration" type="number" ph="120" />
+            <ActInpField lbl="Cost (₹)" name="cost" type="number" ph="500" f={f} setF={setF} focused={focused} setFocused={setFocused} />
+            <ActInpField lbl="Duration (min)" name="duration" type="number" ph="120" f={f} setF={setF} focused={focused} setFocused={setFocused} />
           </div>
-          <InpField lbl="Notes" name="notes" ph="Optional tip or note" />
+          <ActInpField lbl="Notes" name="notes" ph="Optional tip or note" f={f} setF={setF} focused={focused} setFocused={setFocused} />
           <div style={{ display: 'flex', gap: 10 }}>
             <button type="button" onClick={onClose} style={{ ...btn, flex: 1, padding: '12px', minHeight: 'auto' }}>Cancel</button>
             <button type="submit" disabled={loading} style={{ ...btnPrimary, flex: 2, padding: '12px', minHeight: 'auto', opacity: loading ? 0.7 : 1 }}>
@@ -165,7 +168,8 @@ export default function ItineraryBuilder() {
     tripsAPI.getBudget(id).then(setBudget).catch(() => {});
     loadCollaborators();
 
-    const socket = io('http://localhost:5000');
+    const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+    const socket = io(SOCKET_URL);
     socketRef.current = socket;
     socket.emit('join-trip', { tripId: id, userId: user?.id, userName: user?.firstName || 'Guest' });
     socket.on('budget-updated', b => setBudget(b));
