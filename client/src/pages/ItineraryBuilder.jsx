@@ -212,21 +212,26 @@ export default function ItineraryBuilder() {
   };
 
   const handleAddDayToTrip = async (day) => {
-    // Find the stop matching this day's city, or use the first stop
     const matchedStop = trip.stops.find(s => s.city?.toLowerCase() === day.city?.toLowerCase()) || trip.stops[0];
     if (!matchedStop) return toast.error('No stops to add activities to');
     let added = 0;
     for (const a of (day.activities || [])) {
       try {
-        const newAct = await tripsAPI.addActivity({
-          stopId: matchedStop.id, name: a.name, type: a.type || 'SIGHTSEEING',
-          cost: a.estimatedCost || 0, duration: a.duration || 60, notes: a.tip || ''
+        const resp = await tripsAPI.addActivity({
+          stopId: matchedStop.id,
+          name: a.name,
+          type: a.type || 'SIGHTSEEING',
+          cost: a.estimatedCost ?? 0,
+          duration: a.duration || 60,
+          notes: a.tip || ''
         });
+        // Server returns { activity, budget } — extract the activity
+        const newAct = resp?.activity || resp;
         handleActivityAdded(matchedStop.id, newAct);
         added++;
       } catch { /* skip failed */ }
     }
-    toast.success(`Added ${added} activities to ${matchedStop.city}!`);
+    toast.success(`Added ${added} activit${added !== 1 ? 'ies' : 'y'} to ${matchedStop.city}!`);
   };
   const handleAiSuggestStops = async () => {
     if (!trip?.stops?.length) {
@@ -241,7 +246,6 @@ export default function ItineraryBuilder() {
 
   const handleAddSuggestedStop = async (suggestion) => {
     try {
-      // Use the nearest stop's dates as reference
       const refStop = trip.stops.find(s => s.city?.toLowerCase() === suggestion.nearestStop?.toLowerCase()) || trip.stops[0];
       const stopData = {
         tripId: id,
@@ -256,10 +260,16 @@ export default function ItineraryBuilder() {
       let added = 0;
       for (const a of (suggestion.activities || [])) {
         try {
-          const newAct = await tripsAPI.addActivity({
-            stopId: newStop.id, name: a.name, type: a.type || 'SIGHTSEEING',
-            cost: a.estimatedCost || 0, duration: a.duration || 60, notes: ''
+          const resp = await tripsAPI.addActivity({
+            stopId: newStop.id,
+            name: a.name,
+            type: a.type || 'SIGHTSEEING',
+            cost: a.estimatedCost ?? 0,
+            duration: a.duration || 60,
+            notes: ''
           });
+          // Server returns { activity, budget } — extract the activity
+          const newAct = resp?.activity || resp;
           handleActivityAdded(newStop.id, newAct);
           added++;
         } catch { /* skip */ }
