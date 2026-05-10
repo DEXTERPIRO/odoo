@@ -137,6 +137,9 @@ router.post('/suggest-stops', auth, async (req, res) => {
     if (!trip) return res.status(404).json({ error: 'Trip not found' });
     if (!trip.stops.length) return res.status(400).json({ error: 'Add at least one stop first' });
 
+    // List of ALL current stop city names — AI must NOT re-suggest these
+    const existingStopNames = trip.stops.map(s => s.city).join(', ');
+
     const stopList = trip.stops.map(s => {
       const actTypes = [...new Set(s.activities.map(a => a.type))].join(', ') || 'sightseeing';
       return `${s.city}, ${s.country} (activities: ${actTypes})`;
@@ -146,6 +149,10 @@ router.post('/suggest-stops', auth, async (req, res) => {
     const prompt = `You are an expert Indian travel guide for Traveloop India.
 The traveller is visiting: ${stopList}.
 Trip: "${trip.name}", Duration: ${days} days, Budget: ₹${trip.totalBudget}.
+
+IMPORTANT: The traveller has ALREADY added these places to their trip: ${existingStopNames}.
+DO NOT suggest any of these places or anything with a similar name.
+Only suggest COMPLETELY DIFFERENT, NEW nearby places they have NOT yet added.
 
 Suggest 3–4 nearby famous Indian places within 20–30 km of their current stops, ideal as day trips.
 Choose genuine, well-known attractions: temples, forts, waterfalls, beaches, hill stations, scenic viewpoints, wildlife spots, markets etc.
@@ -170,6 +177,16 @@ Return ONLY valid JSON, no markdown, no explanation:
 
     const text = await callAI(prompt, 2000);
     let result = extractJSON(text);
+
+    // Server-side safety filter: remove any suggestions matching existing stops
+    if (result.suggestions) {
+      const existingLower = trip.stops.map(s => s.city.toLowerCase());
+      result.suggestions = result.suggestions.filter(s => {
+        const nameLower = s.name?.toLowerCase() || '';
+        return !existingLower.some(e => e.includes(nameLower) || nameLower.includes(e));
+      });
+    }
+
     if (!result.suggestions || !result.suggestions.length) {
       result = JSON.parse(getMockResponse('nearby famous places'));
     }
