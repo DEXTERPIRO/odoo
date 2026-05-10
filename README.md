@@ -2,7 +2,7 @@
   
   <img src="./client/src/assets/hero.png" alt="Traveloop India Logo" width="120" />
 
-  # 🇮🇳 Traveloop India
+  # Traveloop
 
   **AI-Powered Travel Planning & Collaborative Itinerary Builder**
 
