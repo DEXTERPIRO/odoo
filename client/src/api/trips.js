@@ -1,4 +1,6 @@
 import api from './client';
+import { useAuthStore } from '../store/authStore';
+
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -27,7 +29,10 @@ export const tripsAPI = {
   updateNote: (id, data) => api.put(`/notes/${id}`, data),
   deleteNote: (id) => api.delete(`/notes/${id}`),
   getInvoice: (tripId) => api.get(`/invoice/${tripId}`),
-  downloadPDF: (tripId) => window.open(`${BASE_URL}/invoice/${tripId}/pdf`, '_blank'),
+  downloadPDF: (tripId) => {
+    const token = useAuthStore.getState().token;
+    window.open(`${BASE_URL}/invoice/${tripId}/pdf?token=${encodeURIComponent(token)}`, '_blank');
+  },
   getCommunity: (params) => api.get('/community', { params }),
   shareTrip: (tripId, data) => api.post(`/community/share/${tripId}`, data),
   likePost: (postId) => api.post(`/community/like/${postId}`),

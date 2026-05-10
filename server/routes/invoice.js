@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { PrismaClient } = require('@prisma/client');
 const { auth } = require('../middleware/auth');
+const jwt = require('jsonwebtoken');
 const { recalculateBudget } = require('../utils/budgetCalculator');
 const PDFDocument = require('pdfkit');
 const prisma = new PrismaClient();
@@ -21,10 +22,17 @@ router.get('/:tripId', auth, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-router.get('/:tripId/pdf', auth, async (req, res) => {
+// PDF route — accepts token as query param because window.open() cannot send headers
+router.get('/:tripId/pdf', async (req, res) => {
   try {
+    // Support ?token=... for browser direct-open (window.open can't set headers)
+    const token = req.headers.authorization?.split(' ')[1] || req.query.token;
+    if (!token) return res.status(401).json({ error: 'No token provided' });
+    let userId;
+    try { userId = jwt.verify(token, process.env.JWT_SECRET).userId; }
+    catch { return res.status(401).json({ error: 'Invalid token' }); }
     const trip = await prisma.trip.findFirst({
-      where: { id: req.params.tripId, userId: req.userId },
+      where: { id: req.params.tripId, userId },
       include: {
         user: { select: { firstName: true, lastName: true } },
         stops: { include: { activities: true } },
@@ -52,9 +60,9 @@ router.get('/:tripId/pdf', auth, async (req, res) => {
 
     doc.fontSize(13).fillColor('#1D9E75').text('Budget Summary');
     doc.fontSize(11).fillColor('#333')
-      .text(`Total Budget: $${budget.totalBudget.toFixed(2)}`)
-      .text(`Total Spent: $${budget.totalSpent.toFixed(2)}`)
-      .text(`Remaining: $${budget.remaining.toFixed(2)}`)
+      .text(`Total Budget: ₹${budget.totalBudget.toFixed(2)}`)
+      .text(`Total Spent: ₹${budget.totalSpent.toFixed(2)}`)
+      .text(`Remaining: ₹${budget.remaining.toFixed(2)}`)
       .text(`Status: ${budget.status.toUpperCase()}`);
     doc.moveDown();
 
@@ -78,7 +86,7 @@ router.get('/:tripId/pdf', auth, async (req, res) => {
         doc.text(String(idx + 1), rowX + 4, rowY); rowX += colW[0];
         doc.text(exp.category, rowX + 4, rowY); rowX += colW[1];
         doc.text(exp.description.substring(0, 40), rowX + 4, rowY); rowX += colW[2];
-        doc.text(`$${exp.amount.toFixed(2)}`, rowX + 4, rowY);
+        doc.text(`₹${exp.amount.toFixed(2)}`, rowX + 4, rowY);
         doc.moveDown(0.4);
       });
     }
@@ -86,7 +94,7 @@ router.get('/:tripId/pdf', auth, async (req, res) => {
     doc.moveDown();
     doc.fontSize(13).fillColor('#1D9E75').text('Breakdown by Category');
     Object.entries(budget.breakdown).forEach(([cat, amount]) => {
-      if (amount > 0) doc.fontSize(11).fillColor('#333').text(`${cat.charAt(0).toUpperCase() + cat.slice(1)}: $${amount.toFixed(2)}`);
+      if (amount > 0) doc.fontSize(11).fillColor('#333').text(`${cat.charAt(0).toUpperCase() + cat.slice(1)}: ₹${amount.toFixed(2)}`);
     });
 
     doc.moveDown(2);
