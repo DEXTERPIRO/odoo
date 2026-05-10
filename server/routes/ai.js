@@ -136,11 +136,12 @@ const getMockResponse = (prompt) => {
 };
 
 // ─── OpenRouter AI Call ───────────────────────────────────────────────────────
+// Returns the AI text response, or null if no API key / call fails
 const callAI = async (prompt, maxTokens = 1000) => {
   const apiKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey || apiKey.trim() === '' || apiKey.includes('your_')) {
-    console.log("No valid AI API key found. Returning mock fallback data.");
-    return getMockResponse(prompt);
+    console.log('No valid AI API key — skipping AI call, using fallback chain.');
+    return null;
   }
   try {
     const response = await axios.post(
@@ -161,19 +162,20 @@ const callAI = async (prompt, maxTokens = 1000) => {
     );
     return response.data.choices[0].message.content;
   } catch (error) {
-    console.error("AI API failed (Network/Auth Error). Returning mock fallback data.");
-    return getMockResponse(prompt);
+    console.error('AI API failed:', error.message);
+    return null;
   }
 };
 
 function extractJSON(text) {
+  if (!text) return {};
   try {
     const start = text.indexOf('{');
     const end   = text.lastIndexOf('}') + 1;
     if (start === -1 || end === 0) throw new Error('No JSON structure found');
     return JSON.parse(text.substring(start, end));
   } catch (e) {
-    console.error("Failed to parse JSON from AI, returning raw or empty object.", e);
+    console.error('Failed to parse JSON from AI response.', e.message);
     return {};
   }
 }
