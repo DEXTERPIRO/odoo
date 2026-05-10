@@ -180,72 +180,130 @@ function extractJSON(text) {
   }
 }
 
-// ─── OSM-Based Dynamic Nearby Places (works for ANY city, no API key) ─────────
-const fetchNearbyFromOSM = async (cityName, existingNames = []) => {
+// ─── OSM-Based Dynamic Nearby Places (reads full trip context) ─────────────────
+const fetchNearbyFromOSM = async (cityName, tripContext = {}) => {
+  const { existingCities = [], budget = 0, days = 1, existingActivityTypes = [] } = tripContext;
+  const budgetPerDay = budget > 0 && days > 0 ? Math.round(budget / days) : 0;
+
   try {
     // Step 1: Geocode city → lat/lon via Nominatim
     const geoRes = await axios.get('https://nominatim.openstreetmap.org/search', {
       params: { q: `${cityName}, India`, format: 'json', limit: 1 },
       headers: { 'User-Agent': 'Traveloop/1.0 (meetc8030@gmail.com)' },
-      timeout: 5000
+      timeout: 6000
     });
     if (!geoRes.data || !geoRes.data.length) return null;
-    const { lat, lon } = geoRes.data[0];
+    const { lat, lon, display_name } = geoRes.data[0];
+    console.log(`OSM: Found ${cityName} at ${lat},${lon} (${display_name})`);
 
-    // Step 2: Query Overpass for tourist spots within 25 km
-    const radius = 25000;
-    const overpassQuery = `
-      [out:json][timeout:10];
-      (
-        node["tourism"="attraction"](around:${radius},${lat},${lon});
-        node["historic"~"fort|castle|monument|ruins|temple"](around:${radius},${lat},${lon});
-        node["natural"~"beach|waterfall|peak|lake"](around:${radius},${lat},${lon});
-        node["tourism"~"museum|viewpoint|theme_park|zoo|aquarium"](around:${radius},${lat},${lon});
-        node["leisure"~"nature_reserve|park"](around:${radius},${lat},${lon});
-      );
-      out body 20;
-    `;
+    // Step 2: Query Overpass API for tourist/heritage spots within 30 km
+    const radius = 30000;
+    const overpassQuery = `[out:json][timeout:15];(node["tourism"="attraction"](around:${radius},${lat},${lon});node["historic"~"fort|castle|monument|ruins|temple|shrine"](around:${radius},${lat},${lon});node["natural"~"beach|waterfall|peak|lake|spring"](around:${radius},${lat},${lon});node["tourism"~"museum|viewpoint|theme_park|zoo|aquarium|gallery"](around:${radius},${lat},${lon});node["leisure"~"nature_reserve|park|garden"](around:${radius},${lat},${lon});node["amenity"~"place_of_worship"](around:${radius},${lat},${lon});way["tourism"="attraction"](around:${radius},${lat},${lon});way["historic"~"fort|castle|monument|ruins|temple"](around:${radius},${lat},${lon}););out center 30;`;
+
     const overpassRes = await axios.post('https://overpass-api.de/api/interpreter',
       overpassQuery,
-      { headers: { 'Content-Type': 'text/plain' }, timeout: 8000 }
+      { headers: { 'Content-Type': 'text/plain' }, timeout: 12000 }
     );
 
-    const nodes = overpassRes.data?.elements || [];
-    // Filter: must have a name, exclude existing stops
-    const existingLower = existingNames.map(n => n.toLowerCase());
+    const nodes = (overpassRes.data?.elements || []).map(n => ({
+      ...n,
+      lat: n.lat || n.center?.lat,
+      lon: n.lon || n.center?.lon
+    }));
+
+    // Step 3: Filter — must have name, not in existing cities
+    const existingLower = existingCities.map(n => n.toLowerCase());
+    const uniqueNames = new Set();
     const filtered = nodes
-      .filter(n => n.tags?.name && n.tags.name.length > 2)
-      .filter(n => !existingLower.some(e => n.tags.name.toLowerCase().includes(e) || e.includes(n.tags.name.toLowerCase())))
-      .slice(0, 4);
+      .filter(n => n.tags?.name && n.tags.name.length > 3)
+      .filter(n => {
+        const nl = n.tags.name.toLowerCase();
+        return !existingLower.some(e => nl.includes(e) || e.includes(nl));
+      })
+      .filter(n => {
+        if (uniqueNames.has(n.tags.name)) return false;
+        uniqueNames.add(n.tags.name);
+        return true;
+      })
+      // Prefer places at least 3km away (not inside the city itself)
+      .filter(n => {
+        if (!n.lat) return false;
+        const dlat = parseFloat(lat) - n.lat;
+        const dlon = parseFloat(lon) - n.lon;
+        return Math.sqrt(dlat * dlat + dlon * dlon) * 111 >= 3;
+      })
+      // Sort by: more well-known types first (fort/beach/waterfall > generic attraction)
+      .sort((a, b) => {
+        const priority = { fort: 0, castle: 0, beach: 1, waterfall: 1, peak: 1, museum: 2, attraction: 3, viewpoint: 3, park: 4, nature_reserve: 4 };
+        const pa = priority[a.tags?.historic || a.tags?.natural || a.tags?.tourism || a.tags?.leisure] ?? 5;
+        const pb = priority[b.tags?.historic || b.tags?.natural || b.tags?.tourism || b.tags?.leisure] ?? 5;
+        return pa - pb;
+      });
 
-    if (!filtered.length) return null;
+    // How many stops to suggest based on trip days
+    const suggestCount = days <= 2 ? 2 : days <= 5 ? 3 : 4;
+    const top = filtered.slice(0, suggestCount);
+    if (!top.length) return null;
 
-    // Step 3: Format into Traveloop suggestion shape
-    const typeMap = { attraction: 'SIGHTSEEING', fort: 'SIGHTSEEING', castle: 'SIGHTSEEING', beach: 'ADVENTURE', waterfall: 'ADVENTURE', museum: 'SIGHTSEEING', viewpoint: 'SIGHTSEEING', nature_reserve: 'ADVENTURE', park: 'SIGHTSEEING', temple: 'SIGHTSEEING' };
-    const suggestions = filtered.map(n => {
+    // Step 4: Build context-aware suggestions
+    const typeMap = {
+      fort: 'SIGHTSEEING', castle: 'SIGHTSEEING', monument: 'SIGHTSEEING', temple: 'SIGHTSEEING', shrine: 'SIGHTSEEING',
+      beach: 'ADVENTURE', waterfall: 'ADVENTURE', peak: 'ADVENTURE', nature_reserve: 'ADVENTURE',
+      museum: 'SIGHTSEEING', viewpoint: 'SIGHTSEEING', attraction: 'SIGHTSEEING', park: 'SIGHTSEEING',
+      place_of_worship: 'SIGHTSEEING', zoo: 'SIGHTSEEING', aquarium: 'SIGHTSEEING'
+    };
+
+    // Budget-aware cost estimation
+    const budgetTier = budgetPerDay < 500 ? 'budget' : budgetPerDay < 2000 ? 'mid' : 'premium';
+    const entryFeeByTier = { budget: 0, mid: 50, premium: 200 };
+    const foodCostByTier = { budget: 100, mid: 300, premium: 700 };
+
+    const suggestions = top.map(n => {
       const tags = n.tags || {};
-      const placeType = tags.historic || tags.natural || tags.tourism || tags.leisure || 'attraction';
+      const placeType = tags.historic || tags.natural || tags.tourism || tags.leisure || tags.amenity || 'attraction';
       const actType = typeMap[placeType] || 'SIGHTSEEING';
-      // Calculate approximate distance from city centre
       const dlat = parseFloat(lat) - n.lat;
       const dlon = parseFloat(lon) - n.lon;
       const distKm = Math.round(Math.sqrt(dlat * dlat + dlon * dlon) * 111);
+
+      // Travel tip varies by distance
+      const travelCost = distKm <= 10 ? '₹40–80' : distKm <= 20 ? '₹80–150' : '₹150–300';
+      const transport = distKm <= 10 ? 'auto-rickshaw' : distKm <= 20 ? 'auto or shared cab' : 'local bus or cab';
+
+      const entryCost = tags.fee === 'yes' ? entryFeeByTier[budgetTier] : 0;
+      const foodCost = foodCostByTier[budgetTier];
+
+      // Best time based on type
+      const bestTimeByType = {
+        beach: 'Evening (5–7 PM) for sunset, or early morning to avoid crowds',
+        waterfall: 'Morning (8–10 AM) after monsoon (July–Oct) for full flow',
+        peak: 'Sunrise (5:30–7 AM) for clear views and cool weather',
+        fort: 'Morning (8–11 AM) before peak heat',
+        museum: 'Weekdays 10 AM–1 PM for fewer visitors',
+        temple: 'Early morning (6–8 AM) for aarti and serene atmosphere'
+      };
+      const bestTime = bestTimeByType[placeType] || 'Morning (8–11 AM) for fewer crowds';
+
       return {
         name: tags.name,
         nearestStop: cityName,
         distance: `~${distKm} km from ${cityName}`,
-        description: tags.description || tags['description:en'] || `A notable ${placeType} near ${cityName} worth exploring. ${tags.wikipedia ? 'Listed on Wikipedia.' : ''}`.trim(),
-        bestTime: tags.opening_hours ? `Open: ${tags.opening_hours}` : 'Morning (8–11 AM) for fewer crowds',
-        travelTip: `Take a local auto or taxi from ${cityName} city centre to reach here.`,
+        description: tags.description || tags['description:en'] ||
+          `A ${placeType === 'attraction' ? 'well-known attraction' : placeType} near ${cityName}${tags.wikipedia ? ' (Wikipedia listed)' : ''}. Worth a half-day visit during your ${days}-day trip.`,
+        bestTime,
+        travelTip: `Take a ${transport} from ${cityName} centre (~${travelCost} one way). ${budgetTier === 'budget' ? 'Check for shared autos to save more.' : ''}`.trim(),
         activities: [
-          { name: `Explore ${tags.name}`, type: actType, estimatedCost: tags['fee'] === 'yes' ? 100 : 0, duration: 90 },
-          { name: 'Local Food & Chai Nearby', type: 'FOOD', estimatedCost: 100, duration: 30 }
+          { name: `Explore ${tags.name}`, type: actType, estimatedCost: entryCost, duration: 90 },
+          { name: 'Local Food & Chai Break', type: 'FOOD', estimatedCost: foodCost, duration: 45 }
         ]
       };
     });
+
+    console.log(`OSM: Returning ${suggestions.length} context-aware suggestions for ${cityName} (budget/day: ₹${budgetPerDay}, days: ${days})`);
     return { suggestions };
+
   } catch (err) {
-    console.log('OSM fetch failed:', err.message);
+    console.log(`OSM fetch failed for ${cityName}:`, err.message);
     return null;
   }
 };
@@ -261,40 +319,50 @@ router.post('/suggest-stops', auth, async (req, res) => {
     if (!trip) return res.status(404).json({ error: 'Trip not found' });
     if (!trip.stops.length) return res.status(400).json({ error: 'Add at least one stop first' });
 
-    // List of ALL current stop city names — AI must NOT re-suggest these
-    const existingStopNames = trip.stops.map(s => s.city).join(', ');
+    // ── Extract full trip context ──────────────────────────────────────────────
+    const existingStopNames = trip.stops.map(s => s.city);
     const primaryCity = trip.stops[0].city;
+    const days = Math.ceil((new Date(trip.endDate) - new Date(trip.startDate)) / (1000 * 60 * 60 * 24)) || 1;
+    const budget = parseFloat(trip.totalBudget) || 0;
+    const budgetPerDay = budget > 0 ? Math.round(budget / days) : 0;
+    const existingActivityTypes = [...new Set(trip.stops.flatMap(s => s.activities.map(a => a.type)))];
 
     const stopList = trip.stops.map(s => {
-      const actTypes = [...new Set(s.activities.map(a => a.type))].join(', ') || 'sightseeing';
-      return `${s.city}, ${s.country} (activities: ${actTypes})`;
+      const actTypes = [...new Set(s.activities.map(a => a.type))].join(', ') || 'none yet';
+      return `${s.city}, ${s.country} (done: ${actTypes})`;
     }).join(' | ');
-    const days = Math.ceil((new Date(trip.endDate) - new Date(trip.startDate)) / (1000 * 60 * 60 * 24));
 
+    // ── Build context-rich AI prompt ───────────────────────────────────────────
+    const budgetTier = budgetPerDay < 500 ? 'budget' : budgetPerDay < 2000 ? 'mid-range' : 'premium';
     const prompt = `You are an expert Indian travel guide for Traveloop India.
-The traveller is visiting: ${stopList}.
-Trip: "${trip.name}", Duration: ${days} days, Budget: ₹${trip.totalBudget}.
 
-IMPORTANT: The traveller has ALREADY added these places to their trip: ${existingStopNames}.
-DO NOT suggest any of these places or anything with a similar name.
-Only suggest COMPLETELY DIFFERENT, NEW nearby places they have NOT yet added.
+TRIP CONTEXT:
+- Trip name: "${trip.name}"
+- Destinations: ${stopList}
+- Duration: ${days} days total
+- Total budget: ₹${budget} (≈ ₹${budgetPerDay}/day — ${budgetTier} traveler)
+- Already done activity types: ${existingActivityTypes.join(', ') || 'none'}
 
-Suggest 3–4 nearby famous Indian places within 20–30 km of their current stops, ideal as day trips.
-Choose genuine, well-known attractions: temples, forts, waterfalls, beaches, hill stations, scenic viewpoints, wildlife spots, markets etc.
-For each place suggest 2–3 specific activities visitors should do there.
+TASK: Suggest ${days <= 2 ? 2 : days <= 5 ? 3 : 4} nearby day-trip places within 20–30 km of ${primaryCity}.
 
-Return ONLY valid JSON, no markdown, no explanation:
+RULES:
+1. DO NOT suggest: ${existingStopNames.join(', ')} or any place with a similar name
+2. Keep estimated activity costs under ₹${budgetPerDay > 0 ? Math.round(budgetPerDay * 0.4) : 500} per person (${budgetTier} budget)
+3. Suggest variety — avoid duplicating activity types already done (${existingActivityTypes.join(', ') || 'any type is fine'})
+4. Mention IRCTC train or bus options where possible for budget travel
+
+Return ONLY valid JSON, no markdown:
 {
   "suggestions": [
     {
-      "name": "Exact place name",
-      "nearestStop": "Which of the traveller's stops it's closest to",
-      "distance": "~22 km from Jaipur",
-      "description": "2 sentence description of what makes this place special and why to visit",
-      "bestTime": "Best time of day or season (be specific)",
-      "travelTip": "How to get there cheaply — mention auto/bus/taxi and approximate ₹ cost",
+      "name": "Real place name near ${primaryCity}",
+      "nearestStop": "${primaryCity}",
+      "distance": "~X km from ${primaryCity}",
+      "description": "Why this place is worth visiting — 2 sentences",
+      "bestTime": "Specific time of day or season",
+      "travelTip": "Exact transport from ${primaryCity} with ₹ cost",
       "activities": [
-        { "name": "Specific activity name", "type": "SIGHTSEEING", "estimatedCost": 200, "duration": 90 }
+        { "name": "Specific activity", "type": "SIGHTSEEING|FOOD|ADVENTURE|SHOPPING", "estimatedCost": 100, "duration": 90 }
       ]
     }
   ]
@@ -302,29 +370,32 @@ Return ONLY valid JSON, no markdown, no explanation:
 
     let result = {};
 
-    // 1. Try AI first (if API key exists)
+    // ── Step 1: Try AI (if API key configured) ─────────────────────────────────
     const text = await callAI(prompt, 2000);
     result = extractJSON(text);
 
-    // 2. If AI gave no results, try dynamic OSM lookup (works for ANY city)
+    // ── Step 2: OSM Dynamic Lookup (reads real places for ANY city) ────────────
     if (!result.suggestions || !result.suggestions.length) {
-      console.log(`AI gave no results for ${primaryCity}, trying OSM...`);
-      const osmResult = await fetchNearbyFromOSM(primaryCity, trip.stops.map(s => s.city));
-      if (osmResult?.suggestions?.length) {
-        result = osmResult;
-      }
+      console.log(`No AI key — querying OSM for ${primaryCity} (budget: ₹${budget}, days: ${days})`);
+      const osmResult = await fetchNearbyFromOSM(primaryCity, {
+        existingCities: existingStopNames,
+        budget,
+        days,
+        existingActivityTypes
+      });
+      if (osmResult?.suggestions?.length) result = osmResult;
     }
 
-    // 3. Server-side safety filter: remove any suggestions matching existing stops
+    // ── Step 3: Safety filter — remove any exact city name matches ─────────────
     if (result.suggestions) {
-      const existingLower = trip.stops.map(s => s.city.toLowerCase());
+      const existingLower = existingStopNames.map(s => s.toLowerCase());
       result.suggestions = result.suggestions.filter(s => {
-        const nameLower = s.name?.toLowerCase() || '';
-        return !existingLower.some(e => e.includes(nameLower) || nameLower.includes(e));
+        const nl = s.name?.toLowerCase() || '';
+        return !existingLower.some(e => nl.includes(e) || e.includes(nl));
       });
     }
 
-    // 4. Final fallback: curated city list or generic mock
+    // ── Step 4: Curated city list or generic mock as last resort ───────────────
     if (!result.suggestions || !result.suggestions.length) {
       result = JSON.parse(getMockResponse(`nearby famous places ${primaryCity}`));
     }
