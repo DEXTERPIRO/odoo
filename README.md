@@ -138,5 +138,5 @@ traveloop/
 ---
 
 <div align="center">
-  <i>Built with ❤️ for the Hackathon.</i>
+  <i>Built with ❤️ by Dexter.</i>
 </div>
