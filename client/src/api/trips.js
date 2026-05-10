@@ -38,6 +38,7 @@ export const tripsAPI = {
   likePost: (postId) => api.post(`/community/like/${postId}`),
   cloneTrip: (tripId) => api.post(`/community/clone/${tripId}`),
   aiSuggest: (tripId) => api.post('/ai/suggest-itinerary', { tripId }),
+  aiSuggestStops: (tripId) => api.post('/ai/suggest-stops', { tripId }),
   aiPacking: (tripId) => api.post('/ai/generate-packing', { tripId }),
   aiChat: (message, tripContext) => api.post('/ai/chat', { message, tripContext }),
   adminStats: () => api.get('/admin/stats'),

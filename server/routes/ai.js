@@ -4,8 +4,38 @@ const { auth } = require('../middleware/auth');
 const axios = require('axios');
 const prisma = new PrismaClient();
 
+// ─── Mock Fallback Responses ──────────────────────────────────────────────────
 const getMockResponse = (prompt) => {
-  if (prompt.includes("day-by-day itinerary")) {
+  if (prompt.includes("nearby famous places")) {
+    return JSON.stringify({
+      suggestions: [
+        {
+          name: "Local Heritage Fort",
+          nearestStop: "Your current stop",
+          distance: "~18 km",
+          description: "A stunning historical fort showcasing local architecture and culture. Perfect for history lovers and photographers.",
+          bestTime: "Early morning (7–9 AM) for fewer crowds",
+          travelTip: "Take an auto-rickshaw from the city centre, about ₹80–120.",
+          activities: [
+            { name: "Guided Heritage Tour", type: "SIGHTSEEING", estimatedCost: 0, duration: 90 },
+            { name: "Local Street Food Walk", type: "FOOD", estimatedCost: 200, duration: 60 }
+          ]
+        },
+        {
+          name: "Scenic Hilltop Viewpoint",
+          nearestStop: "Your current stop",
+          distance: "~25 km",
+          description: "A breathtaking hilltop with panoramic views of the surrounding valley. Best visited at sunrise for golden hour photos.",
+          bestTime: "Sunrise (6 AM) or Sunset (5:30 PM)",
+          travelTip: "Hire a private taxi or use a local bus. The walk to the top takes 30 minutes.",
+          activities: [
+            { name: "Sunrise Trek", type: "ADVENTURE", estimatedCost: 0, duration: 120 },
+            { name: "Photography Session", type: "SIGHTSEEING", estimatedCost: 0, duration: 60 }
+          ]
+        }
+      ]
+    });
+  } else if (prompt.includes("day-by-day itinerary")) {
     return JSON.stringify({
       days: [
         {
@@ -47,19 +77,19 @@ const getMockResponse = (prompt) => {
   } else if (prompt.toLowerCase().includes("food") || prompt.toLowerCase().includes("eat")) {
     return "You're in for a treat! Don't miss out on local street food, but make sure to eat at busy places where food is cooked fresh in front of you. Always drink bottled or filtered water (₹20 per bottle), and definitely try a hot cup of local chai!";
   } else if (prompt.toLowerCase().includes("budget") || prompt.toLowerCase().includes("cheap")) {
-    return "India is incredibly budget-friendly. You can travel comfortably on ₹1,500 - ₹3,000 per day. Use local trains (IRCTC) or buses for intercity travel, eat at local dhabas, and use auto-rickshaws (always insist on the meter or agree on a fare beforehand).";
+    return "India is incredibly budget-friendly. You can travel comfortably on ₹1,500–₹3,000 per day. Use local trains (IRCTC) or buses for intercity travel, eat at local dhabas, and use auto-rickshaws (always insist on the meter or agree on a fare beforehand).";
   } else {
     return "That's a great question about your trip! While I'm currently operating in offline mode to save resources, I highly recommend checking local travel blogs for specific details. Always keep your documents handy, carry a mix of cash and UPI apps, and enjoy the beautiful chaos of India!";
   }
 };
 
+// ─── OpenRouter AI Call ───────────────────────────────────────────────────────
 const callAI = async (prompt, maxTokens = 1000) => {
   const apiKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey || apiKey.trim() === '' || apiKey.includes('your_')) {
     console.log("No valid AI API key found. Returning mock fallback data.");
     return getMockResponse(prompt);
   }
-
   try {
     const response = await axios.post(
       'https://openrouter.ai/api/v1/chat/completions',
@@ -96,7 +126,61 @@ function extractJSON(text) {
   }
 }
 
-// ─── Suggest Day-by-Day Itinerary ────────────────────────────────────────────
+// ─── Suggest Nearby Stops (Famous Places within 20-30km) ─────────────────────
+router.post('/suggest-stops', auth, async (req, res) => {
+  try {
+    const { tripId } = req.body;
+    const trip = await prisma.trip.findFirst({
+      where: { id: tripId, userId: req.userId },
+      include: { stops: { include: { activities: true } } }
+    });
+    if (!trip) return res.status(404).json({ error: 'Trip not found' });
+    if (!trip.stops.length) return res.status(400).json({ error: 'Add at least one stop first' });
+
+    const stopList = trip.stops.map(s => {
+      const actTypes = [...new Set(s.activities.map(a => a.type))].join(', ') || 'sightseeing';
+      return `${s.city}, ${s.country} (activities: ${actTypes})`;
+    }).join(' | ');
+    const days = Math.ceil((new Date(trip.endDate) - new Date(trip.startDate)) / (1000 * 60 * 60 * 24));
+
+    const prompt = `You are an expert Indian travel guide for Traveloop India.
+The traveller is visiting: ${stopList}.
+Trip: "${trip.name}", Duration: ${days} days, Budget: ₹${trip.totalBudget}.
+
+Suggest 3–4 nearby famous Indian places within 20–30 km of their current stops, ideal as day trips.
+Choose genuine, well-known attractions: temples, forts, waterfalls, beaches, hill stations, scenic viewpoints, wildlife spots, markets etc.
+For each place suggest 2–3 specific activities visitors should do there.
+
+Return ONLY valid JSON, no markdown, no explanation:
+{
+  "suggestions": [
+    {
+      "name": "Exact place name",
+      "nearestStop": "Which of the traveller's stops it's closest to",
+      "distance": "~22 km from Jaipur",
+      "description": "2 sentence description of what makes this place special and why to visit",
+      "bestTime": "Best time of day or season (be specific)",
+      "travelTip": "How to get there cheaply — mention auto/bus/taxi and approximate ₹ cost",
+      "activities": [
+        { "name": "Specific activity name", "type": "SIGHTSEEING", "estimatedCost": 200, "duration": 90 }
+      ]
+    }
+  ]
+}`;
+
+    const text = await callAI(prompt, 2000);
+    let result = extractJSON(text);
+    if (!result.suggestions || !result.suggestions.length) {
+      result = JSON.parse(getMockResponse('nearby famous places'));
+    }
+    res.json(result);
+  } catch (error) {
+    console.error('AI suggest-stops error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ─── Suggest Day-by-Day Itinerary ─────────────────────────────────────────────
 router.post('/suggest-itinerary', auth, async (req, res) => {
   try {
     const { tripId } = req.body;
@@ -149,12 +233,9 @@ Return ONLY valid JSON, no markdown, no explanation:
 
     const text   = await callAI(prompt, 2000);
     const result = extractJSON(text);
-    
-    // If extraction fails completely and returns empty {}, replace with mock data
     if (!result.days) {
       return res.json(JSON.parse(getMockResponse("day-by-day itinerary")));
     }
-
     res.json(result);
   } catch (error) {
     console.error('AI suggest error:', error.message);
@@ -162,7 +243,7 @@ Return ONLY valid JSON, no markdown, no explanation:
   }
 });
 
-// ─── Generate Trip Summary ───────────────────────────────────────────────────
+// ─── Generate Trip Summary ─────────────────────────────────────────────────────
 router.post('/trip-summary', auth, async (req, res) => {
   try {
     const { tripId } = req.body;
@@ -172,7 +253,7 @@ router.post('/trip-summary', auth, async (req, res) => {
     });
     if (!trip) return res.status(404).json({ error: 'Trip not found' });
 
-    const stops = trip.stops.map(s => 
+    const stops = trip.stops.map(s =>
       `${s.city} (${s.activities.map(a => a.name).join(', ')})`
     ).join(' → ');
 
@@ -186,11 +267,9 @@ Return ONLY valid JSON: { "summary": "...", "highlights": ["highlight1", "highli
 
     const text = await callAI(prompt, 2000);
     const result = extractJSON(text);
-    
     if (!result.summary) {
       return res.json(JSON.parse(getMockResponse("3-sentence travel summary")));
     }
-
     res.json(result);
   } catch (error) {
     console.error('AI summary error:', error.message);
@@ -198,7 +277,7 @@ Return ONLY valid JSON: { "summary": "...", "highlights": ["highlight1", "highli
   }
 });
 
-// ─── Generate Packing List ────────────────────────────────────────────────────
+// ─── Generate Packing List ─────────────────────────────────────────────────────
 router.post('/generate-packing', auth, async (req, res) => {
   try {
     const { tripId } = req.body;
@@ -228,7 +307,6 @@ Return ONLY valid JSON, no markdown:
 
     const text   = await callAI(prompt, 2000);
     const result = extractJSON(text);
-    
     if (!result.categories) {
       Object.assign(result, JSON.parse(getMockResponse("smart packing list")));
     }
@@ -246,7 +324,7 @@ Return ONLY valid JSON, no markdown:
   }
 });
 
-// ─── Travel Chat ──────────────────────────────────────────────────────────────
+// ─── Travel Chat ───────────────────────────────────────────────────────────────
 router.post('/chat', auth, async (req, res) => {
   try {
     const { message, tripContext } = req.body;
@@ -256,7 +334,6 @@ router.post('/chat', auth, async (req, res) => {
 
     const combinedPrompt = `${system}\n\nUser Question: ${message}`;
     const reply = await callAI(combinedPrompt, 2000);
-
     res.json({ reply });
   } catch (error) {
     console.error('AI chat error:', error.message);

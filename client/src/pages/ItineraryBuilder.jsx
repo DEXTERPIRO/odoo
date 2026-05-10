@@ -151,12 +151,15 @@ export default function ItineraryBuilder() {
   const [budget, setBudget]     = useState(null);
   const [showAddStop, setShowAddStop] = useState(false);
   const [actModal, setActModal]       = useState(null);
-  const [aiLoading, setAiLoading]     = useState(false);
-  const [aiResult, setAiResult]       = useState(null);
-  const [viewers, setViewers]         = useState([]);
+  const [aiLoading, setAiLoading]         = useState(false);
+  const [aiResult, setAiResult]           = useState(null);
+  const [stopsLoading, setStopsLoading]   = useState(false);
+  const [stopsResult, setStopsResult]     = useState(null);
+  const [viewers, setViewers]             = useState([]);
   const [collaborators, setCollaborators] = useState([]);
-  const [aiHov, setAiHov]       = useState(false);
-  const [addStopHov, setAddStopHov] = useState(false);
+  const [aiHov, setAiHov]                 = useState(false);
+  const [stopsHov, setStopsHov]           = useState(false);
+  const [addStopHov, setAddStopHov]       = useState(false);
   const socketRef = useRef(null);
 
   const loadCollaborators = useCallback(() => {
@@ -225,6 +228,47 @@ export default function ItineraryBuilder() {
     }
     toast.success(`Added ${added} activities to ${matchedStop.city}!`);
   };
+  const handleAiSuggestStops = async () => {
+    if (!trip?.stops?.length) {
+      toast('Add at least one stop first so AI knows what is nearby!', { icon: '◆' });
+      return;
+    }
+    setStopsLoading(true);
+    try { const r = await tripsAPI.aiSuggestStops(id); setStopsResult(r); }
+    catch { toast.error('AI stop suggestion failed'); }
+    finally { setStopsLoading(false); }
+  };
+
+  const handleAddSuggestedStop = async (suggestion) => {
+    try {
+      // Use the nearest stop's dates as reference
+      const refStop = trip.stops.find(s => s.city?.toLowerCase() === suggestion.nearestStop?.toLowerCase()) || trip.stops[0];
+      const stopData = {
+        tripId: id,
+        city: suggestion.name,
+        country: refStop?.country || 'India',
+        startDate: refStop?.startDate || trip.startDate,
+        endDate: refStop?.endDate || trip.endDate,
+      };
+      const newStop = await tripsAPI.addStop(stopData);
+      handleStopAdded(newStop);
+      // Add activities to the new stop
+      let added = 0;
+      for (const a of (suggestion.activities || [])) {
+        try {
+          const newAct = await tripsAPI.addActivity({
+            stopId: newStop.id, name: a.name, type: a.type || 'SIGHTSEEING',
+            cost: a.estimatedCost || 0, duration: a.duration || 60, notes: ''
+          });
+          handleActivityAdded(newStop.id, newAct);
+          added++;
+        } catch { /* skip */ }
+      }
+      toast.success(`Added stop: ${suggestion.name} with ${added} activit${added !== 1 ? 'ies' : 'y'}!`);
+    } catch (err) {
+      toast.error('Failed to add stop');
+    }
+  };
 
   if (loading) return <div style={{ textAlign: 'center', padding: 60, color: N.muted, fontFamily: N.font }}>Loading itinerary...</div>;
   if (!trip)   return <div style={{ textAlign: 'center', padding: 60, color: N.danger,  fontFamily: N.font }}>Trip not found</div>;
@@ -254,6 +298,11 @@ export default function ItineraryBuilder() {
               onMouseEnter={() => setAiHov(true)} onMouseLeave={() => setAiHov(false)}
               style={{ ...btnPrimary, padding: '10px 18px', fontSize: 13, minHeight: 'auto', boxShadow: aiHov && !aiLoading ? N.shadowHover : N.shadow, transform: aiHov && !aiLoading ? 'translateY(-1px)' : 'none', opacity: aiLoading ? 0.7 : 1 }}>
               {aiLoading ? 'AI thinking...' : 'AI Suggest →'}
+            </button>
+            <button onClick={handleAiSuggestStops} disabled={stopsLoading}
+              onMouseEnter={() => setStopsHov(true)} onMouseLeave={() => setStopsHov(false)}
+              style={{ ...btn, padding: '10px 18px', fontSize: 13, minHeight: 'auto', color: N.accentSecondary, boxShadow: stopsHov && !stopsLoading ? N.shadowHover : N.shadow, transform: stopsHov && !stopsLoading ? 'translateY(-1px)' : 'none', opacity: stopsLoading ? 0.7 : 1 }}>
+              {stopsLoading ? 'Searching...' : '◆ Nearby Stops →'}
             </button>
             <Link to={`/trips/${id}/budget`} style={{ ...btn, padding: '10px 18px', fontSize: 13, minHeight: 'auto', textDecoration: 'none', color: N.accentSecondary }}>Budget</Link>
             <Link to={`/trips/${id}/packing`} style={{ ...btn, padding: '10px 18px', fontSize: 13, minHeight: 'auto', textDecoration: 'none', color: N.muted }}>Packing</Link>
@@ -411,6 +460,75 @@ export default function ItineraryBuilder() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Nearby Stops Modal ──────────────────────────────────────── */}
+        {stopsResult && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(61,72,82,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+            <div style={{ ...card, maxWidth: 640, width: '100%', maxHeight: '88vh', overflowY: 'auto', padding: '28px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div>
+                  <h3 style={{ margin: 0, fontFamily: N.fontDisplay, fontSize: 20, fontWeight: 700, color: N.fg }}>◆ Nearby Famous Places</h3>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: N.muted, fontWeight: 600 }}>AI-suggested stops within 20–30 km of your route</p>
+                </div>
+                <button onClick={() => setStopsResult(null)} style={{ ...btn, padding: '8px 12px', boxShadow: N.shadowSm, fontSize: 16, minHeight: 'auto' }}>✕</button>
+              </div>
+
+              {/* Context */}
+              <div style={{ background: N.bg, boxShadow: N.shadowInset, borderRadius: N.radiusInner, padding: '10px 14px', marginBottom: 20, fontSize: 11, color: N.muted, fontWeight: 600 }}>
+                Based on your stops: <strong style={{ color: N.accent }}>{trip.stops.map(s => s.city).join(' → ')}</strong>
+              </div>
+
+              {/* Suggestions */}
+              {(stopsResult.suggestions || []).map((s, i) => (
+                <div key={i} style={{ ...cardSm, padding: '18px 20px', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                        <span style={{ fontFamily: N.fontDisplay, fontWeight: 800, fontSize: 16, color: N.fg }}>{s.name}</span>
+                        <span style={{ background: N.bg, boxShadow: N.shadowInset, borderRadius: N.radiusPill, padding: '2px 10px', fontSize: 10, fontWeight: 800, color: N.accentSecondary }}>{s.distance}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: N.muted, fontWeight: 600, marginBottom: 6 }}>Near: {s.nearestStop}</div>
+                      <div style={{ fontSize: 13, color: N.fg, lineHeight: 1.5 }}>{s.description}</div>
+                    </div>
+                    <button onClick={() => handleAddSuggestedStop(s)}
+                      style={{ ...btnPrimary, padding: '8px 16px', fontSize: 12, minHeight: 'auto', flexShrink: 0, marginLeft: 14, fontWeight: 700 }}>
+                      + Add as Stop
+                    </button>
+                  </div>
+
+                  {/* Meta row */}
+                  <div style={{ display: 'flex', gap: 16, marginBottom: 12, flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: 11, color: N.fg, fontWeight: 600, display: 'flex', gap: 5, alignItems: 'center' }}>
+                      <span style={{ color: N.accent }}>⏰</span> {s.bestTime}
+                    </div>
+                    <div style={{ fontSize: 11, color: N.fg, fontWeight: 600, display: 'flex', gap: 5, alignItems: 'center' }}>
+                      <span style={{ color: N.warning }}>🛺</span> {s.travelTip}
+                    </div>
+                  </div>
+
+                  {/* Activities */}
+                  {(s.activities || []).length > 0 && (
+                    <div style={{ background: N.bg, boxShadow: N.shadowInsetSm, borderRadius: N.radiusInner, overflow: 'hidden' }}>
+                      {s.activities.map((a, j) => (
+                        <div key={j} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 14px', borderBottom: j < s.activities.length - 1 ? `1px solid rgba(163,177,198,0.2)` : 'none', fontSize: 12, alignItems: 'center', gap: 10 }}>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: TYPE_COLOR[a.type] || N.muted, flexShrink: 0 }} />
+                            <span style={{ fontWeight: 600, color: N.fg }}>{a.name}</span>
+                            <span style={{ background: N.bg, boxShadow: N.shadowInsetSm, borderRadius: N.radiusPill, padding: '1px 8px', fontSize: 9, fontWeight: 800, color: TYPE_COLOR[a.type] || N.muted }}>{a.type}</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 12, flexShrink: 0 }}>
+                            <span style={{ color: a.estimatedCost > 0 ? N.fg : N.accentSecondary, fontWeight: 700 }}>₹{a.estimatedCost || 0}</span>
+                            <span style={{ color: N.muted }}>{a.duration}m</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}
