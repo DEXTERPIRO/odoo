@@ -197,10 +197,33 @@ export default function ItineraryBuilder() {
     catch { toast.error('Failed'); }
   };
   const handleAiSuggest = async () => {
+    if (!trip) return;
+    if (!trip.stops || trip.stops.length === 0) {
+      toast('Add at least one stop first so AI can personalise your itinerary!', { icon: '◆' });
+      return;
+    }
     setAiLoading(true);
     try { const r = await tripsAPI.aiSuggest(id); setAiResult(r); }
     catch { toast.error('AI suggestion failed'); }
     finally { setAiLoading(false); }
+  };
+
+  const handleAddDayToTrip = async (day) => {
+    // Find the stop matching this day's city, or use the first stop
+    const matchedStop = trip.stops.find(s => s.city?.toLowerCase() === day.city?.toLowerCase()) || trip.stops[0];
+    if (!matchedStop) return toast.error('No stops to add activities to');
+    let added = 0;
+    for (const a of (day.activities || [])) {
+      try {
+        const newAct = await tripsAPI.addActivity({
+          stopId: matchedStop.id, name: a.name, type: a.type || 'SIGHTSEEING',
+          cost: a.estimatedCost || 0, duration: a.duration || 60, notes: a.tip || ''
+        });
+        handleActivityAdded(matchedStop.id, newAct);
+        added++;
+      } catch { /* skip failed */ }
+    }
+    toast.success(`Added ${added} activities to ${matchedStop.city}!`);
   };
 
   if (loading) return <div style={{ textAlign: 'center', padding: 60, color: N.muted, fontFamily: N.font }}>Loading itinerary...</div>;
@@ -314,40 +337,73 @@ export default function ItineraryBuilder() {
         {/* AI Result modal */}
         {aiResult && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(61,72,82,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-            <div style={{ ...card, maxWidth: 600, width: '100%', maxHeight: '85vh', overflowY: 'auto', padding: '28px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+            <div style={{ ...card, maxWidth: 620, width: '100%', maxHeight: '88vh', overflowY: 'auto', padding: '28px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                 <h3 style={{ margin: 0, fontFamily: N.fontDisplay, fontSize: 20, fontWeight: 700, color: N.fg }}>AI Suggested Itinerary</h3>
                 <button onClick={() => setAiResult(null)} style={{ ...btn, padding: '8px 12px', boxShadow: N.shadowSm, fontSize: 16, minHeight: 'auto' }}>✕</button>
               </div>
-              <div style={{ ...cardSm, padding: '14px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ fontWeight: 700, color: N.fg }}>Est. Total: ₹{aiResult.totalEstimatedCost}</div>
+
+              {/* Trip context used by AI */}
+              <div style={{ background: N.bg, boxShadow: N.shadowInset, borderRadius: N.radiusInner, padding: '12px 16px', marginBottom: 20, fontSize: 12, color: N.muted, fontWeight: 600 }}>
+                <div style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, color: N.muted, marginBottom: 8 }}>Context sent to AI</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px' }}>
+                  <span>◆ <strong style={{ color: N.fg }}>{trip.name}</strong></span>
+                  <span>◆ {new Date(trip.startDate).toLocaleDateString('en-IN', { day:'numeric',month:'short' })} → {new Date(trip.endDate).toLocaleDateString('en-IN', { day:'numeric',month:'short',year:'numeric' })}</span>
+                  <span>◆ Budget: <strong style={{ color: N.fg }}>₹{trip.totalBudget?.toLocaleString()}</strong></span>
+                  <span>◆ Stops: <strong style={{ color: N.accent }}>{trip.stops.map(s => s.city).join(' → ') || 'None'}</strong></span>
+                </div>
+              </div>
+
+              {/* Budget summary */}
+              <div style={{ ...cardSm, padding: '14px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ fontWeight: 700, color: N.fg }}>Est. Total: ₹{aiResult.totalEstimatedCost?.toLocaleString()}</div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: aiResult.budgetStatus === 'within' ? N.accentSecondary : N.danger }}>
                   {aiResult.budgetStatus === 'within' ? '✓ Within budget' : '! Over budget'}
                 </div>
+                <div style={{ marginLeft: 'auto', fontSize: 11, color: N.muted, fontWeight: 600 }}>
+                  {aiResult.days?.length} day{aiResult.days?.length !== 1 ? 's' : ''} planned
+                </div>
               </div>
+
+              {/* Days */}
               {(aiResult.days || []).map(day => (
-                <div key={day.dayNumber} style={{ marginBottom: 20 }}>
-                  <div style={{ display: 'flex', gap: 14, marginBottom: 10 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: N.bg, boxShadow: N.shadowInsetDeep, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: N.accent, flexShrink: 0 }}>{day.dayNumber}</div>
-                    <div>
-                      <div style={{ fontWeight: 700, color: N.fg, fontSize: 15 }}>Day {day.dayNumber} — {day.city}</div>
-                      <div style={{ fontSize: 12, color: N.muted, fontStyle: 'italic' }}>{day.theme}</div>
+                <div key={day.dayNumber} style={{ marginBottom: 24 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: N.bg, boxShadow: N.shadowInsetDeep, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: N.accent, flexShrink: 0 }}>{day.dayNumber}</div>
+                      <div>
+                        <div style={{ fontWeight: 700, color: N.fg, fontSize: 15 }}>Day {day.dayNumber} — {day.city}</div>
+                        <div style={{ fontSize: 12, color: N.muted, fontStyle: 'italic' }}>{day.theme}</div>
+                      </div>
                     </div>
+                    <button onClick={() => handleAddDayToTrip(day)}
+                      style={{ ...btn, padding: '6px 14px', fontSize: 11, minHeight: 'auto', boxShadow: N.shadowSm, color: N.accent, fontWeight: 700 }}>
+                      + Add to Trip
+                    </button>
                   </div>
                   <div style={{ background: N.bg, boxShadow: N.shadowInsetSm, borderRadius: N.radiusInner, overflow: 'hidden' }}>
                     {(day.activities || []).map((a, idx) => (
-                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 14px', borderBottom: idx < day.activities.length - 1 ? `1px solid rgb(163,177,198,0.2)` : 'none', fontSize: 13, color: N.fg }}>
-                        <span>{a.time} · {a.name}</span>
-                        <span style={{ color: N.muted, fontWeight: 600 }}>₹{a.estimatedCost}</span>
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', borderBottom: idx < day.activities.length - 1 ? `1px solid rgb(163,177,198,0.2)` : 'none', fontSize: 13, color: N.fg, alignItems: 'flex-start', gap: 10 }}>
+                        <div>
+                          <span style={{ fontWeight: 600 }}>{a.time} · {a.name}</span>
+                          {a.tip && <div style={{ fontSize: 11, color: N.muted, marginTop: 2 }}>💡 {a.tip}</div>}
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ fontWeight: 700, color: a.estimatedCost > 0 ? N.fg : N.accentSecondary }}>₹{a.estimatedCost || 0}</div>
+                          <div style={{ fontSize: 10, color: N.muted }}>{a.duration}m</div>
+                        </div>
                       </div>
                     ))}
                   </div>
                   {day.budgetTip && <div style={{ fontSize: 12, color: N.warning, marginTop: 8, fontWeight: 600, paddingLeft: 4 }}>◆ {day.budgetTip}</div>}
+                  <div style={{ fontSize: 11, color: N.muted, marginTop: 6, textAlign: 'right', fontWeight: 600 }}>Est. day cost: ₹{day.estimatedDayCost?.toLocaleString()}</div>
                 </div>
               ))}
+
+              {/* General tips */}
               {(aiResult.generalTips || []).length > 0 && (
                 <div style={{ ...cardSm, padding: '16px 20px' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: N.muted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>General Tips</div>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: N.muted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>General Tips</div>
                   {aiResult.generalTips.map((t, i) => (
                     <div key={i} style={{ fontSize: 13, color: N.fg, paddingLeft: 12, marginBottom: 6, display: 'flex', gap: 8 }}>
                       <span style={{ color: N.accent, flexShrink: 0 }}>◆</span>{t}
