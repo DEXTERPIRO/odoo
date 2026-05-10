@@ -28,7 +28,8 @@ export default function Budget() {
 
   useEffect(() => {
     load();
-    const socket = io('http://localhost:5000');
+    const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+    const socket = io(SOCKET_URL);
     socket.emit('join-trip', id);
     socket.on('budget-updated', b => { setBudget(b); tripsAPI.getExpenses(id).then(setExpenses).catch(() => {}); });
     return () => { socket.emit('leave-trip', id); socket.disconnect(); };
