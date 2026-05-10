@@ -387,10 +387,11 @@ Return ONLY valid JSON, no markdown, no explanation:
   "generalTips": ["Carry cash for rural areas", "Book trains on IRCTC early", "Tip 3"]
 }`;
 
+    const primaryCity = trip.stops[0]?.city || '';
     const text   = await callAI(prompt, 2000);
     const result = extractJSON(text);
     if (!result.days) {
-      return res.json(JSON.parse(getMockResponse("day-by-day itinerary")));
+      return res.json(JSON.parse(getMockResponse(`day-by-day itinerary ${primaryCity}`)));
     }
     res.json(result);
   } catch (error) {
