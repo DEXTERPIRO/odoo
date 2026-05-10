@@ -1,23 +1,25 @@
-<div align="center">
-  
-  <img src="./client/src/assets/hero.png" alt="Traveloop India Logo" width="120" />
+<p align="center">
+  <img src="./client/src/assets/hero.png" alt="Traveloop Logo" width="120" />
+</p>
 
-  # Traveloop
+<h1 align="center">Traveloop</h1>
 
-  **AI-Powered Travel Planning & Collaborative Itinerary Builder**
+<p align="center">
+  <b>AI-Powered Travel Planning & Collaborative Itinerary Builder</b>
+</p>
 
-  [![React](https://img.shields.io/badge/React-18.x-61DAFB?style=flat&logo=react)](https://reactjs.org/)
-  [![Node.js](https://img.shields.io/badge/Node.js-Backend-339933?style=flat&logo=nodedotjs)](https://nodejs.org/)
-  [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791?style=flat&logo=postgresql)](https://www.postgresql.org/)
-  [![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?style=flat&logo=prisma)](https://www.prisma.io/)
-  [![Google Gemini](https://img.shields.io/badge/AI-Google_Gemini-8E75B2?style=flat&logo=google)](https://deepmind.google/technologies/gemini/)
-  [![Socket.io](https://img.shields.io/badge/Realtime-Socket.io-010101?style=flat&logo=socketdotio)](https://socket.io/)
+<p align="center">
+  <a href="https://reactjs.org/"><img src="https://img.shields.io/badge/React-18.x-61DAFB?style=flat&logo=react" alt="React"></a>
+  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-Backend-339933?style=flat&logo=nodedotjs" alt="Node.js"></a>
+  <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-Database-336791?style=flat&logo=postgresql" alt="PostgreSQL"></a>
+  <a href="https://www.prisma.io/"><img src="https://img.shields.io/badge/Prisma-ORM-2D3748?style=flat&logo=prisma" alt="Prisma"></a>
+  <a href="https://deepmind.google/technologies/gemini/"><img src="https://img.shields.io/badge/AI-Google_Gemini-8E75B2?style=flat&logo=google" alt="Google Gemini"></a>
+  <a href="https://socket.io/"><img src="https://img.shields.io/badge/Realtime-Socket.io-010101?style=flat&logo=socketdotio" alt="Socket.io"></a>
+</p>
 
-  <p align="center">
-    A comprehensive, visually stunning platform designed to simplify the complexity of planning multi-city Indian travel. Experience tactile Neumorphic design, intelligent AI assistance, and real-time multiplayer collaboration.
-  </p>
-
-</div>
+<p align="center">
+  A comprehensive, visually stunning platform designed to simplify the complexity of planning multi-city Indian travel. Experience tactile Neumorphic design, intelligent AI assistance, and real-time multiplayer collaboration.
+</p>
 
 ---
 
