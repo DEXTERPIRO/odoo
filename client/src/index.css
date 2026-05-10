@@ -1,0 +1,115 @@
+/* ─── Google Fonts ─────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=DM+Sans:wght@400;500;700&display=swap');
+
+/* ─── Reset & Root ──────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: #E0E5EC;
+  color: #3D4852;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  border: none;
+}
+
+/* ─── Typography ────────────────────────────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  color: #3D4852;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+h1 { font-size: clamp(28px, 5vw, 48px); font-weight: 800; }
+h2 { font-size: clamp(22px, 3.5vw, 32px); }
+h3 { font-size: clamp(18px, 2.5vw, 24px); }
+
+p { color: #6B7280; line-height: 1.7; }
+
+a {
+  color: #6C63FF;
+  text-decoration: none;
+  transition: color 300ms ease-out;
+}
+a:hover { color: #8B84FF; }
+
+/* ─── Focus Visible (Accessibility) ────────────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid #6C63FF;
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 8px; height: 8px; }
+::-webkit-scrollbar-track  { background: #E0E5EC; }
+::-webkit-scrollbar-thumb  {
+  background: rgb(163,177,198,0.6);
+  border-radius: 9999px;
+  border: 2px solid #E0E5EC;
+}
+::-webkit-scrollbar-thumb:hover { background: rgb(163,177,198,0.9); }
+
+/* ─── Animations ────────────────────────────────────────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+
+@keyframes neu-pulse {
+  0%, 100% {
+    box-shadow:
+      9px 9px 16px rgb(163,177,198,0.6),
+      -9px -9px 16px rgba(255,255,255,0.5);
+  }
+  50% {
+    box-shadow:
+      12px 12px 20px rgb(163,177,198,0.7),
+      -12px -12px 20px rgba(255,255,255,0.6);
+  }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Utility Classes ───────────────────────────────────────────────────────── */
+.neu-float   { animation: float 3s ease-in-out infinite; }
+.neu-pulse   { animation: neu-pulse 3s ease-in-out infinite; }
+.neu-fade-in { animation: fadeInUp 400ms ease-out both; }
+
+.font-display { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+
+/* ─── Leaflet Map Override ──────────────────────────────────────────────────── */
+.leaflet-container {
+  background: #E0E5EC;
+  border-radius: 20px;
+}
+.leaflet-control-attribution { display: none; }

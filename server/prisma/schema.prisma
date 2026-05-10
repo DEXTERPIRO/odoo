@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TripStatus {
+  UPCOMING
+  ONGOING
+  COMPLETED
+}
+
+enum ActivityType {
+  SIGHTSEEING
+  FOOD
+  ADVENTURE
+  SHOPPING
+  TRANSPORT
+  ACCOMMODATION
+  OTHER
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  firstName     String
+  lastName      String
+  phone         String?
+  city          String?
+  country       String?
+  photo         String?
+  additionalInfo String?
+  isAdmin       Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  trips         Trip[]
+  notes         TripNote[]
+  posts         CommunityPost[]
+  postLikes     PostLike[]
+  collaborations TripCollaborator[]
+}
+
+model Trip {
+  id           String      @id @default(uuid())
+  userId       String
+  name         String
+  description  String?
+  startDate    DateTime
+  endDate      DateTime
+  totalBudget  Float       @default(0)
+  isPublic     Boolean     @default(false)
+  coverPhoto   String?
+  status       TripStatus  @default(UPCOMING)
+  clonedFromId String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stops        Stop[]
+  checklist    PackingItem[]
+  notes        TripNote[]
+  expenses     Expense[]
+  posts        CommunityPost[]
+  collaborators TripCollaborator[]
+}
+
+model Stop {
+  id         String     @id @default(uuid())
+  tripId     String
+  city       String
+  country    String
+  startDate  DateTime
+  endDate    DateTime
+  orderIndex Int        @default(0)
+  createdAt  DateTime   @default(now())
+  trip       Trip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  activities Activity[]
+  notes      TripNote[]
+}
+
+model Activity {
+  id          String       @id @default(uuid())
+  stopId      String
+  name        String
+  type        ActivityType @default(OTHER)
+  cost        Float        @default(0)
+  duration    Int          @default(60)
+  notes       String?
+  date        DateTime?
+  createdAt   DateTime     @default(now())
+  stop        Stop         @relation(fields: [stopId], references: [id], onDelete: Cascade)
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  tripId      String
+  category    String
+  description String
+  amount      Float
+  date        DateTime @default(now())
+  receipt     String?
+  createdAt   DateTime @default(now())
+  trip        Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+}
+
+model PackingItem {
+  id        String   @id @default(uuid())
+  tripId    String
+  label     String
+  category  String   @default("General")
+  isPacked  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+}
+
+model TripNote {
+  id        String   @id @default(uuid())
+  tripId    String
+  userId    String
+  stopId    String?
+  title     String?
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stop      Stop?    @relation(fields: [stopId], references: [id])
+}
+
+model CommunityPost {
+  id        String     @id @default(uuid())
+  userId    String
+  tripId    String
+  caption   String?
+  likesCount Int       @default(0)
+  createdAt DateTime   @default(now())
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trip      Trip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  likes     PostLike[]
+}
+
+model PostLike {
+  id        String        @id @default(uuid())
+  userId    String
+  postId    String
+  createdAt DateTime      @default(now())
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  @@unique([userId, postId])
+}
+
+model TripCollaborator {
+  id      String   @id @default(uuid())
+  tripId  String
+  userId  String
+  role    String   @default("viewer")
+  addedAt DateTime @default(now())
+  trip    Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([tripId, userId])
+}
