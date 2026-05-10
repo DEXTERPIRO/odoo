@@ -384,13 +384,6 @@ TripCollaborator → tripId + userId + role
 
 ---
 
-## 👨‍💻 Developer
-
-**Meet Chauhan**
-- GitHub: [@DEXTERPIRO](https://github.com/DEXTERPIRO)
-- Email: meetc8030@gmail.com
-
----
 
 ## 📄 License
 
