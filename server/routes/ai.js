@@ -42,8 +42,14 @@ const getMockResponse = (prompt) => {
         { name: "Essentials", items: ["Cash in INR", "Water bottle", "First-aid kit"] }
       ]
     });
+  } else if (prompt.toLowerCase().includes("best time")) {
+    return "The best time to visit most parts of India is during the winter months, from October to March, when the weather is cool and pleasant. However, if you're planning a trip to the Himalayas (like Ladakh or Spiti), summer (May to July) is the ideal season.";
+  } else if (prompt.toLowerCase().includes("food") || prompt.toLowerCase().includes("eat")) {
+    return "You're in for a treat! Don't miss out on local street food, but make sure to eat at busy places where food is cooked fresh in front of you. Always drink bottled or filtered water (₹20 per bottle), and definitely try a hot cup of local chai!";
+  } else if (prompt.toLowerCase().includes("budget") || prompt.toLowerCase().includes("cheap")) {
+    return "India is incredibly budget-friendly. You can travel comfortably on ₹1,500 - ₹3,000 per day. Use local trains (IRCTC) or buses for intercity travel, eat at local dhabas, and use auto-rickshaws (always insist on the meter or agree on a fare beforehand).";
   } else {
-    return "This is a fallback AI response since no API key was provided. Have a great trip and enjoy exploring!";
+    return "That's a great question about your trip! While I'm currently operating in offline mode to save resources, I highly recommend checking local travel blogs for specific details. Always keep your documents handy, carry a mix of cash and UPI apps, and enjoy the beautiful chaos of India!";
   }
 };
 
