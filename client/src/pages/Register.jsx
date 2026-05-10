@@ -19,6 +19,47 @@ const strengthInfo = (pw) => {
   return                  { pct: 100, color: N.accentSecondary, text: 'Strong' };
 };
 
+function Field({ name, type, placeholder, lbl, showPass, setShowPass, form = {}, onChange, focused, setFocused, errors = {}, strength = {} }) {
+  const isPassword = name === 'password';
+  const inputType  = isPassword ? (showPass ? 'text' : 'password') : (type || 'text');
+
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <label style={label}>{lbl}</label>
+      <div style={{ position: 'relative' }}>
+        <input
+          name={name}
+          type={inputType}
+          value={form[name] ?? ''}
+          onChange={onChange}
+          placeholder={placeholder}
+          autoComplete={isPassword ? 'new-password' : 'off'}
+          onFocus={() => setFocused && setFocused(name)}
+          onBlur={() => setFocused && setFocused(null)}
+          style={{ ...input, boxShadow: focused === name ? N.shadowInsetDeep : N.shadowInset, paddingRight: isPassword ? 48 : undefined }}
+        />
+        {isPassword && (
+          <button type="button" onClick={() => setShowPass && setShowPass(v => !v)} style={{
+            position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
+            background: 'none', border: 'none', cursor: 'pointer', color: N.muted, fontSize: 16,
+          }}>
+            {showPass ? '○' : '●'}
+          </button>
+        )}
+      </div>
+      {isPassword && form.password && (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ height: 6, background: N.bg, boxShadow: N.shadowInsetSm, borderRadius: N.radiusPill, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${strength.pct || 0}%`, background: strength.color || N.bg, borderRadius: N.radiusPill, transition: 'width 400ms ease-out, background 400ms ease-out' }} />
+          </div>
+          {strength.text && <div style={{ fontSize: 11, color: strength.color, marginTop: 4, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>{strength.text}</div>}
+        </div>
+      )}
+      {errors[name] && <div style={{ fontSize: 12, color: N.danger, marginTop: 5, fontWeight: 500 }}>{errors[name]}</div>}
+    </div>
+  );
+}
+
 export default function Register() {
   const [step, setStep]     = useState(0);
   const [form, setForm]     = useState({ firstName: '', lastName: '', email: '', password: '', phone: '', city: '', country: 'India', additionalInfo: '' });
@@ -38,8 +79,8 @@ export default function Register() {
   const validateStep = () => {
     const e = {};
     if (step === 0) {
-      if (!form.firstName.trim()) e.firstName = 'Required';
-      if (!form.lastName.trim())  e.lastName  = 'Required';
+      if (!form.firstName.trim() || form.firstName.trim().length < 2) e.firstName = 'At least 2 characters required';
+      if (!form.lastName.trim()  || form.lastName.trim().length  < 2) e.lastName  = 'At least 2 characters required';
     }
     if (step === 1) {
       if (!form.email.includes('@')) e.email    = 'Valid email required';
@@ -73,42 +114,7 @@ export default function Register() {
 
   const strength = strengthInfo(form.password);
 
-  const Field = ({ name, type = 'text', placeholder, lbl, full = true }) => (
-    <div style={{ marginBottom: 18, ...(full ? {} : {}) }}>
-      <label style={label}>{lbl}</label>
-      <div style={{ position: 'relative' }}>
-        <input
-          name={name}
-          type={name === 'password' ? (showPass ? 'text' : 'password') : type}
-          value={form[name]}
-          onChange={onChange}
-          placeholder={placeholder}
-          onFocus={() => setFocused(name)}
-          onBlur={() => setFocused(null)}
-          style={{ ...inp(name, type, placeholder), paddingRight: name === 'password' ? 48 : undefined }}
-        />
-        {name === 'password' && (
-          <button type="button" onClick={() => setShowPass(!showPass)} style={{
-            position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
-            background: 'none', border: 'none', cursor: 'pointer', color: N.muted, fontSize: 16,
-          }}>
-            {showPass ? '○' : '●'}
-          </button>
-        )}
-      </div>
-      {name === 'password' && form.password && (
-        <div style={{ marginTop: 8 }}>
-          <div style={{ height: 6, background: N.bg, boxShadow: N.shadowInsetSm, borderRadius: N.radiusPill, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${strength.pct}%`, background: strength.color, borderRadius: N.radiusPill, transition: 'width 400ms ease-out, background 400ms ease-out' }} />
-          </div>
-          {strength.text && <div style={{ fontSize: 11, color: strength.color, marginTop: 4, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            {strength.text}
-          </div>}
-        </div>
-      )}
-      {errors[name] && <div style={{ fontSize: 12, color: N.danger, marginTop: 5, fontWeight: 500 }}>{errors[name]}</div>}
-    </div>
-  );
+
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: N.bg, fontFamily: N.font }}>
@@ -195,23 +201,23 @@ export default function Register() {
           {step === 0 && (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <Field name="firstName" placeholder="Priya"        lbl="First Name *" />
-                <Field name="lastName"  placeholder="Sharma"       lbl="Last Name *"  />
+                <Field name="firstName" placeholder="Priya"  lbl="First Name *" form={form} onChange={onChange} focused={focused} setFocused={setFocused} errors={errors} showPass={showPass} setShowPass={setShowPass} strength={strength} />
+                <Field name="lastName"  placeholder="Sharma" lbl="Last Name *"  form={form} onChange={onChange} focused={focused} setFocused={setFocused} errors={errors} showPass={showPass} setShowPass={setShowPass} strength={strength} />
               </div>
-              <Field name="phone" type="tel" placeholder="+91 9876543210" lbl="Phone Number" />
+              <Field name="phone" type="tel" placeholder="+91 9876543210" lbl="Phone Number" form={form} onChange={onChange} focused={focused} setFocused={setFocused} errors={errors} showPass={showPass} setShowPass={setShowPass} strength={strength} />
             </>
           )}
           {step === 1 && (
             <>
-              <Field name="email"    type="email"    placeholder="you@example.com" lbl="Email Address *" />
-              <Field name="password" type="password" placeholder="Min. 6 characters" lbl="Password *" />
+              <Field name="email"    type="email"    placeholder="you@example.com"    lbl="Email Address *" form={form} onChange={onChange} focused={focused} setFocused={setFocused} errors={errors} showPass={showPass} setShowPass={setShowPass} strength={strength} />
+              <Field name="password" type="password" placeholder="Min. 6 characters" lbl="Password *"      form={form} onChange={onChange} focused={focused} setFocused={setFocused} errors={errors} showPass={showPass} setShowPass={setShowPass} strength={strength} />
             </>
           )}
           {step === 2 && (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <Field name="city"    placeholder="Mumbai" lbl="City"    />
-                <Field name="country" placeholder="India"  lbl="Country" />
+                <Field name="city"    placeholder="Mumbai" lbl="City"    form={form} onChange={onChange} focused={focused} setFocused={setFocused} errors={errors} showPass={showPass} setShowPass={setShowPass} strength={strength} />
+                <Field name="country" placeholder="India"  lbl="Country" form={form} onChange={onChange} focused={focused} setFocused={setFocused} errors={errors} showPass={showPass} setShowPass={setShowPass} strength={strength} />
               </div>
               <div style={{ marginBottom: 18 }}>
                 <label style={label}>About You (optional)</label>
