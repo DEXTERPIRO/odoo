@@ -23,6 +23,33 @@
 
 ---
 
+## 📸 Screenshots
+
+<table>
+  <tr>
+    <td align="center"><b>Login</b></td>
+    <td align="center"><b>Dashboard</b></td>
+    <td align="center"><b>My Trips</b></td>
+  </tr>
+  <tr>
+    <td><img src="./screenshots/login.png" alt="Login Page" width="100%"/></td>
+    <td><img src="./screenshots/dashboard.png" alt="Dashboard" width="100%"/></td>
+    <td><img src="./screenshots/trips.png" alt="My Trips" width="100%"/></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Create Trip</b></td>
+    <td align="center"><b>Community</b></td>
+    <td align="center"><b>Profile</b></td>
+  </tr>
+  <tr>
+    <td><img src="./screenshots/create_trip.png" alt="Create Trip" width="100%"/></td>
+    <td><img src="./screenshots/community.png" alt="Community" width="100%"/></td>
+    <td><img src="./screenshots/profile.png" alt="Profile" width="100%"/></td>
+  </tr>
+</table>
+
+---
+
 ## ✨ Core Features
 
 ### 🤖 Intelligent AI Assistance (Powered by Google Gemini)
