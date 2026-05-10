@@ -178,6 +178,76 @@ function extractJSON(text) {
   }
 }
 
+// ─── OSM-Based Dynamic Nearby Places (works for ANY city, no API key) ─────────
+const fetchNearbyFromOSM = async (cityName, existingNames = []) => {
+  try {
+    // Step 1: Geocode city → lat/lon via Nominatim
+    const geoRes = await axios.get('https://nominatim.openstreetmap.org/search', {
+      params: { q: `${cityName}, India`, format: 'json', limit: 1 },
+      headers: { 'User-Agent': 'Traveloop/1.0 (meetc8030@gmail.com)' },
+      timeout: 5000
+    });
+    if (!geoRes.data || !geoRes.data.length) return null;
+    const { lat, lon } = geoRes.data[0];
+
+    // Step 2: Query Overpass for tourist spots within 25 km
+    const radius = 25000;
+    const overpassQuery = `
+      [out:json][timeout:10];
+      (
+        node["tourism"="attraction"](around:${radius},${lat},${lon});
+        node["historic"~"fort|castle|monument|ruins|temple"](around:${radius},${lat},${lon});
+        node["natural"~"beach|waterfall|peak|lake"](around:${radius},${lat},${lon});
+        node["tourism"~"museum|viewpoint|theme_park|zoo|aquarium"](around:${radius},${lat},${lon});
+        node["leisure"~"nature_reserve|park"](around:${radius},${lat},${lon});
+      );
+      out body 20;
+    `;
+    const overpassRes = await axios.post('https://overpass-api.de/api/interpreter',
+      overpassQuery,
+      { headers: { 'Content-Type': 'text/plain' }, timeout: 8000 }
+    );
+
+    const nodes = overpassRes.data?.elements || [];
+    // Filter: must have a name, exclude existing stops
+    const existingLower = existingNames.map(n => n.toLowerCase());
+    const filtered = nodes
+      .filter(n => n.tags?.name && n.tags.name.length > 2)
+      .filter(n => !existingLower.some(e => n.tags.name.toLowerCase().includes(e) || e.includes(n.tags.name.toLowerCase())))
+      .slice(0, 4);
+
+    if (!filtered.length) return null;
+
+    // Step 3: Format into Traveloop suggestion shape
+    const typeMap = { attraction: 'SIGHTSEEING', fort: 'SIGHTSEEING', castle: 'SIGHTSEEING', beach: 'ADVENTURE', waterfall: 'ADVENTURE', museum: 'SIGHTSEEING', viewpoint: 'SIGHTSEEING', nature_reserve: 'ADVENTURE', park: 'SIGHTSEEING', temple: 'SIGHTSEEING' };
+    const suggestions = filtered.map(n => {
+      const tags = n.tags || {};
+      const placeType = tags.historic || tags.natural || tags.tourism || tags.leisure || 'attraction';
+      const actType = typeMap[placeType] || 'SIGHTSEEING';
+      // Calculate approximate distance from city centre
+      const dlat = parseFloat(lat) - n.lat;
+      const dlon = parseFloat(lon) - n.lon;
+      const distKm = Math.round(Math.sqrt(dlat * dlat + dlon * dlon) * 111);
+      return {
+        name: tags.name,
+        nearestStop: cityName,
+        distance: `~${distKm} km from ${cityName}`,
+        description: tags.description || tags['description:en'] || `A notable ${placeType} near ${cityName} worth exploring. ${tags.wikipedia ? 'Listed on Wikipedia.' : ''}`.trim(),
+        bestTime: tags.opening_hours ? `Open: ${tags.opening_hours}` : 'Morning (8–11 AM) for fewer crowds',
+        travelTip: `Take a local auto or taxi from ${cityName} city centre to reach here.`,
+        activities: [
+          { name: `Explore ${tags.name}`, type: actType, estimatedCost: tags['fee'] === 'yes' ? 100 : 0, duration: 90 },
+          { name: 'Local Food & Chai Nearby', type: 'FOOD', estimatedCost: 100, duration: 30 }
+        ]
+      };
+    });
+    return { suggestions };
+  } catch (err) {
+    console.log('OSM fetch failed:', err.message);
+    return null;
+  }
+};
+
 // ─── Suggest Nearby Stops (Famous Places within 20-30km) ─────────────────────
 router.post('/suggest-stops', auth, async (req, res) => {
   try {
@@ -191,6 +261,7 @@ router.post('/suggest-stops', auth, async (req, res) => {
 
     // List of ALL current stop city names — AI must NOT re-suggest these
     const existingStopNames = trip.stops.map(s => s.city).join(', ');
+    const primaryCity = trip.stops[0].city;
 
     const stopList = trip.stops.map(s => {
       const actTypes = [...new Set(s.activities.map(a => a.type))].join(', ') || 'sightseeing';
@@ -227,10 +298,22 @@ Return ONLY valid JSON, no markdown, no explanation:
   ]
 }`;
 
-    const text = await callAI(prompt, 2000);
-    let result = extractJSON(text);
+    let result = {};
 
-    // Server-side safety filter: remove any suggestions matching existing stops
+    // 1. Try AI first (if API key exists)
+    const text = await callAI(prompt, 2000);
+    result = extractJSON(text);
+
+    // 2. If AI gave no results, try dynamic OSM lookup (works for ANY city)
+    if (!result.suggestions || !result.suggestions.length) {
+      console.log(`AI gave no results for ${primaryCity}, trying OSM...`);
+      const osmResult = await fetchNearbyFromOSM(primaryCity, trip.stops.map(s => s.city));
+      if (osmResult?.suggestions?.length) {
+        result = osmResult;
+      }
+    }
+
+    // 3. Server-side safety filter: remove any suggestions matching existing stops
     if (result.suggestions) {
       const existingLower = trip.stops.map(s => s.city.toLowerCase());
       result.suggestions = result.suggestions.filter(s => {
@@ -239,9 +322,11 @@ Return ONLY valid JSON, no markdown, no explanation:
       });
     }
 
+    // 4. Final fallback: curated city list or generic mock
     if (!result.suggestions || !result.suggestions.length) {
-      result = JSON.parse(getMockResponse('nearby famous places'));
+      result = JSON.parse(getMockResponse(`nearby famous places ${primaryCity}`));
     }
+
     res.json(result);
   } catch (error) {
     console.error('AI suggest-stops error:', error.message);
