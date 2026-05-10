@@ -13,7 +13,7 @@
   <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-Backend-339933?style=flat&logo=nodedotjs" alt="Node.js"></a>
   <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-Database-336791?style=flat&logo=postgresql" alt="PostgreSQL"></a>
   <a href="https://www.prisma.io/"><img src="https://img.shields.io/badge/Prisma-ORM-2D3748?style=flat&logo=prisma" alt="Prisma"></a>
-  <a href="https://deepmind.google/technologies/gemini/"><img src="https://img.shields.io/badge/AI-Google_Gemini-8E75B2?style=flat&logo=google" alt="Google Gemini"></a>
+  <a href="https://openrouter.ai/"><img src="https://img.shields.io/badge/AI-OpenRouter_API-6C63FF?style=flat&logo=openai" alt="OpenRouter AI"></a>
   <a href="https://socket.io/"><img src="https://img.shields.io/badge/Realtime-Socket.io-010101?style=flat&logo=socketdotio" alt="Socket.io"></a>
 </p>
 
@@ -52,7 +52,7 @@
 
 ## ✨ Core Features
 
-### 🤖 Intelligent AI Assistance (Powered by Google Gemini)
+### 🤖 Intelligent AI Assistance (Powered by OpenRouter API)
 - **AI Itinerary Generation:** Instantly generate day-by-day travel plans customized to your budget and duration.
 - **Smart Packing Lists:** AI analyzes your destination's climate and activities to suggest the perfect packing checklist.
 - **Context-Aware Travel Assistant:** A floating AI Chatbot that answers questions based on your specific trip context.
@@ -92,7 +92,7 @@ Traveloop is structured as a decoupled full-stack application:
 - **ORM:** Prisma
 - **Authentication:** JWT (JSON Web Tokens) & bcrypt
 - **Real-Time Engine:** Socket.io
-- **AI Integration:** `@google/genai` (Gemini API)
+- **AI Integration:** OpenRouter API (with offline mock fallback for demo mode)
 
 ---
 
@@ -116,7 +116,7 @@ Configure your environment variables:
 ```bash
 cp .env.example .env
 ```
-*Edit the `.env` file to include your PostgreSQL connection string, a JWT secret, and your Google Gemini API key.*
+*Edit the `.env` file to include your PostgreSQL connection string, a JWT secret, and your OpenRouter API key.*
 
 Run database migrations to initialize the schema:
 ```bash
