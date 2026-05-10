@@ -157,6 +157,9 @@ export default function ItineraryBuilder() {
   const [stopsLoading, setStopsLoading]   = useState(false);
   const [stopsResult, setStopsResult]     = useState(null);
   const [addedStops, setAddedStops]       = useState(new Set());
+  const [editingBudget, setEditingBudget] = useState(false);
+  const [newBudget, setNewBudget]         = useState('');
+  const [savingBudget, setSavingBudget]   = useState(false);
   const [viewers, setViewers]             = useState([]);
   const [collaborators, setCollaborators] = useState([]);
   const [aiHov, setAiHov]                 = useState(false);
@@ -201,6 +204,22 @@ export default function ItineraryBuilder() {
     try { await tripsAPI.deleteStop(stopId); setTrip(t => ({ ...t, stops: t.stops.filter(s => s.id !== stopId) })); toast.success('Stop removed'); }
     catch { toast.error('Failed'); }
   };
+  const handleSaveBudget = async () => {
+    const val = parseFloat(newBudget);
+    if (isNaN(val) || val < 0) { toast.error('Enter a valid budget amount'); return; }
+    setSavingBudget(true);
+    try {
+      await api.put(`/trips/${id}`, { totalBudget: val });
+      setTrip(t => ({ ...t, totalBudget: val }));
+      // Refresh budget bar
+      const b = await tripsAPI.getBudget(id);
+      setBudget(b);
+      setEditingBudget(false);
+      toast.success(`Budget updated to ₹${val.toLocaleString()}`);
+    } catch { toast.error('Failed to update budget'); }
+    finally { setSavingBudget(false); }
+  };
+
   const handleAiSuggest = async () => {
     if (!trip) return;
     if (!trip.stops || trip.stops.length === 0) {
@@ -339,8 +358,36 @@ export default function ItineraryBuilder() {
         {/* Budget bar */}
         {budget && (
           <div style={{ ...cardSm, marginBottom: 20, padding: '16px 20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 10 }}>
-              <span style={{ color: N.muted, fontWeight: 600 }}>Budget: <strong style={{ color: N.fg }}>₹{budget.totalBudget?.toLocaleString()}</strong></span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {editingBudget ? (
+                  <>
+                    <span style={{ color: N.muted, fontWeight: 600 }}>Budget: ₹</span>
+                    <input
+                      autoFocus
+                      type="number"
+                      value={newBudget}
+                      onChange={e => setNewBudget(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleSaveBudget(); if (e.key === 'Escape') setEditingBudget(false); }}
+                      style={{ ...input, width: 120, padding: '4px 10px', fontSize: 13, fontWeight: 700, minHeight: 'auto', height: 32, boxShadow: N.shadowInsetDeep }}
+                    />
+                    <button onClick={handleSaveBudget} disabled={savingBudget}
+                      style={{ ...btnPrimary, padding: '4px 14px', fontSize: 12, minHeight: 'auto', height: 32, fontWeight: 700 }}>
+                      {savingBudget ? '...' : 'Save'}
+                    </button>
+                    <button onClick={() => setEditingBudget(false)}
+                      style={{ ...btn, padding: '4px 10px', fontSize: 12, minHeight: 'auto', height: 32, color: N.muted }}>✕</button>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ color: N.muted, fontWeight: 600 }}>Budget: <strong style={{ color: N.fg }}>₹{budget.totalBudget?.toLocaleString()}</strong></span>
+                    <button
+                      onClick={() => { setNewBudget(budget.totalBudget || ''); setEditingBudget(true); }}
+                      title="Edit budget"
+                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: N.muted, fontSize: 13, padding: '2px 6px', borderRadius: 6, lineHeight: 1 }}>✏️</button>
+                  </>
+                )}
+              </div>
               <span style={{ color: barColor, fontWeight: 700 }}>₹{budget.totalSpent?.toLocaleString()} spent ({budget.percentUsed}%)</span>
             </div>
             <div style={{ height: 8, background: N.bg, boxShadow: N.shadowInsetSm, borderRadius: N.radiusPill, overflow: 'hidden' }}>
