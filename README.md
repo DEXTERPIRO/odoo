@@ -29,32 +29,22 @@
 
 <table>
   <tr>
-    <td align="center"><b>🗺️ Itinerary Builder</b></td>
-    <td align="center"><b>🤖 AI Day-by-Day Plan</b></td>
-    <td align="center"><b>📍 AI Nearby Stops</b></td>
-  </tr>
-  <tr>
-    <td><img src="./screenshots/itinerary.png" alt="Itinerary Builder" width="100%"/></td>
-    <td><img src="./screenshots/ai_days.png" alt="AI Suggested Itinerary" width="100%"/></td>
-    <td><img src="./screenshots/ai_stops.png" alt="AI Nearby Stops" width="100%"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>💰 Budget & Inline Editing</b></td>
+    <td align="center"><b>🔐 Login</b></td>
     <td align="center"><b>🏠 Dashboard</b></td>
     <td align="center"><b>✈️ My Trips</b></td>
   </tr>
   <tr>
-    <td><img src="./screenshots/budget_edit.png" alt="Inline Budget Edit" width="100%"/></td>
+    <td><img src="./screenshots/login.png" alt="Login Page" width="100%"/></td>
     <td><img src="./screenshots/dashboard.png" alt="Dashboard" width="100%"/></td>
     <td><img src="./screenshots/trips.png" alt="My Trips" width="100%"/></td>
   </tr>
   <tr>
-    <td align="center"><b>🔐 Login</b></td>
+    <td align="center"><b>🗺️ Create Trip</b></td>
     <td align="center"><b>👥 Community</b></td>
     <td align="center"><b>👤 Profile</b></td>
   </tr>
   <tr>
-    <td><img src="./screenshots/login.png" alt="Login Page" width="100%"/></td>
+    <td><img src="./screenshots/create_trip.png" alt="Create Trip" width="100%"/></td>
     <td><img src="./screenshots/community.png" alt="Community" width="100%"/></td>
     <td><img src="./screenshots/profile.png" alt="Profile" width="100%"/></td>
   </tr>
