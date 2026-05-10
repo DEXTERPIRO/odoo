@@ -242,7 +242,20 @@ export default function ItineraryBuilder() {
       return;
     }
     setStopsLoading(true);
-    try { const r = await tripsAPI.aiSuggestStops(id); setStopsResult(r); }
+    try {
+      const r = await tripsAPI.aiSuggestStops(id);
+      setStopsResult(r);
+      // Pre-mark suggestions that are already in the trip as stops
+      if (r?.suggestions && trip?.stops) {
+        const existingCities = trip.stops.map(s => s.city?.toLowerCase().trim());
+        const alreadyAdded = new Set(
+          r.suggestions
+            .filter(s => existingCities.some(c => c.includes(s.name?.toLowerCase().trim()) || s.name?.toLowerCase().trim().includes(c)))
+            .map(s => s.name)
+        );
+        if (alreadyAdded.size > 0) setAddedStops(alreadyAdded);
+      }
+    }
     catch { toast.error('AI stop suggestion failed'); }
     finally { setStopsLoading(false); }
   };
@@ -498,7 +511,7 @@ export default function ItineraryBuilder() {
                   <h3 style={{ margin: 0, fontFamily: N.fontDisplay, fontSize: 20, fontWeight: 700, color: N.fg }}>◆ Nearby Famous Places</h3>
                   <p style={{ margin: '4px 0 0', fontSize: 12, color: N.muted, fontWeight: 600 }}>AI-suggested stops within 20–30 km of your route</p>
                 </div>
-                <button onClick={() => setStopsResult(null)} style={{ ...btn, padding: '8px 12px', boxShadow: N.shadowSm, fontSize: 16, minHeight: 'auto' }}>✕</button>
+                <button onClick={() => { setStopsResult(null); setAddedStops(new Set()); }} style={{ ...btn, padding: '8px 12px', boxShadow: N.shadowSm, fontSize: 16, minHeight: 'auto' }}>✕</button>
               </div>
 
               {/* Context */}
