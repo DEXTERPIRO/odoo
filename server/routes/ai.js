@@ -135,49 +135,68 @@ const getMockResponse = (prompt) => {
   }
 };
 
-// ─── OpenRouter AI Call ───────────────────────────────────────────────────────
-// Returns the AI text response, or null if no API key / call fails
+// ─── AI Call — Groq (primary, ultra-fast) → OpenRouter (fallback) ────────────
 const callAI = async (prompt, maxTokens = 1500) => {
-  const apiKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
-  const model  = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
-  if (!apiKey || apiKey.trim() === '' || apiKey.includes('your_')) {
-    console.log('No valid AI API key — skipping AI call, using OSM fallback chain.');
-    return null;
+  const systemMsg = {
+    role: 'system',
+    content: 'You are an expert Indian travel guide. Always respond with ONLY valid JSON, no markdown, no explanation, no code blocks.'
+  };
+  const userMsg = { role: 'user', content: prompt };
+
+  // ── 1. Try Groq first (fastest inference, llama-3.3-70b-versatile) ──────────
+  const groqKey   = process.env.GROQ_API_KEY;
+  const groqModel = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  if (groqKey && groqKey.startsWith('gsk_')) {
+    try {
+      console.log(`[AI] Calling Groq: ${groqModel}`);
+      const res = await axios.post(
+        'https://api.groq.com/openai/v1/chat/completions',
+        { model: groqModel, max_tokens: maxTokens, temperature: 0.3, messages: [systemMsg, userMsg] },
+        {
+          headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+          timeout: 15000
+        }
+      );
+      const content = res.data.choices[0].message.content;
+      console.log('[AI] Groq responded successfully.');
+      return content;
+    } catch (err) {
+      console.warn('[AI] Groq failed:', err.response?.data?.error?.message || err.message, '— trying OpenRouter...');
+    }
   }
-  try {
-    console.log(`Calling AI model: ${model}`);
-    const response = await axios.post(
-      'https://openrouter.ai/api/v1/chat/completions',
-      {
-        model,
-        max_tokens: maxTokens,
-        temperature: 0.3,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert Indian travel guide. Always respond with ONLY valid JSON, no markdown, no explanation, no code blocks.'
+
+  // ── 2. Fallback to OpenRouter ────────────────────────────────────────────────
+  const orKey   = process.env.OPENROUTER_API_KEY;
+  const orModel = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
+  if (orKey && !orKey.includes('your_')) {
+    try {
+      console.log(`[AI] Calling OpenRouter: ${orModel}`);
+      const res = await axios.post(
+        'https://openrouter.ai/api/v1/chat/completions',
+        { model: orModel, max_tokens: maxTokens, temperature: 0.3, messages: [systemMsg, userMsg] },
+        {
+          headers: {
+            'Authorization': `Bearer ${orKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'http://localhost:5173',
+            'X-Title': 'Traveloop India'
           },
-          { role: 'user', content: prompt }
-        ]
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'http://localhost:5173',
-          'X-Title': 'Traveloop India'
-        },
-        timeout: 20000
-      }
-    );
-    const content = response.data.choices[0].message.content;
-    console.log('AI responded successfully.');
-    return content;
-  } catch (error) {
-    console.error('AI API failed:', error.response?.data?.error?.message || error.message);
-    return null;
+          timeout: 20000
+        }
+      );
+      const content = res.data.choices[0].message.content;
+      console.log('[AI] OpenRouter responded successfully.');
+      return content;
+    } catch (err) {
+      console.warn('[AI] OpenRouter failed:', err.response?.data?.error?.message || err.message);
+    }
   }
+
+  // ── 3. No AI available — OSM fallback will handle it ────────────────────────
+  console.log('[AI] No AI key available — using OSM/curated fallback.');
+  return null;
 };
+
 
 // ─── Robust JSON Extractor ────────────────────────────────────────────────────
 function extractJSON(text) {
