@@ -137,6 +137,3 @@ traveloop/
 
 ---
 
-<div align="center">
-  <i>Built with ❤️ by Dexter.</i>
-</div>
