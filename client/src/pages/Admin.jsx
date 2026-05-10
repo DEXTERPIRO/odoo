@@ -4,8 +4,9 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import toast from 'react-hot-toast';
 import { tripsAPI } from '../api/trips';
 import { useAuthStore } from '../store/authStore';
+import { N, card, cardSm } from '../neu';
 
-const STATUS_COLOR = { UPCOMING: '#1D9E75', ONGOING: '#EF9F27', COMPLETED: '#888' };
+const STATUS_COLOR = { UPCOMING: N.accentSecondary, ONGOING: N.warning, COMPLETED: N.muted };
 
 export default function Admin() {
   const { user } = useAuthStore();
@@ -20,116 +21,123 @@ export default function Admin() {
       .then(([s, u]) => { setStats(s); setUsers(u); })
       .catch(() => toast.error('Failed to load admin data'))
       .finally(() => setLoading(false));
-  }, [user]);
+  }, [user, navigate]);
 
   if (!user?.isAdmin) return null;
-  if (loading) return <div style={{ textAlign: 'center', padding: 60, color: '#888' }}>Loading admin panel…</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: 60, color: N.muted, fontFamily: N.font, fontWeight: 600 }}>Loading admin panel…</div>;
   if (!stats) return null;
 
   const statCards = [
-    { label: 'Total Users', value: stats.totals.users, icon: '👥', color: '#1D9E75' },
-    { label: 'Total Trips', value: stats.totals.trips, icon: '✈️', color: '#EF9F27' },
-    { label: 'Activities', value: stats.totals.activities, icon: '🎯', color: '#3182ce' },
-    { label: 'Community Posts', value: stats.totals.posts, icon: '🌍', color: '#805ad5' },
+    { label: 'Total Users', value: stats.totals.users, color: N.accent },
+    { label: 'Total Trips', value: stats.totals.trips, color: N.warning },
+    { label: 'Activities', value: stats.totals.activities, color: N.danger },
+    { label: 'Community Posts', value: stats.totals.posts, color: '#8B5CF6' },
   ];
 
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
-        <div style={{ width: 36, height: 36, background: '#1D9E75', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18 }}>⚙️</div>
+    <div style={{ fontFamily: N.font, maxWidth: 1100, margin: '0 auto', paddingBottom: 60 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
+        <div style={{ width: 44, height: 44, background: N.bg, boxShadow: N.shadowSm, borderRadius: N.radiusBtn, display: 'flex', alignItems: 'center', justifyContent: 'center', color: N.accent, fontSize: 20, fontWeight: 900, fontFamily: N.fontDisplay, border: `2px solid ${N.bg}` }}>A</div>
         <div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: '#1a1a1a' }}>Admin Panel</h1>
-          <p style={{ margin: 0, fontSize: 13, color: '#888' }}>Platform overview and management</p>
+          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 900, color: N.fg, fontFamily: N.fontDisplay, letterSpacing: -0.5 }}>Admin Dashboard</h1>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: N.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Platform overview and management</p>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
-        {statCards.map(({ label, value, icon, color }) => (
-          <div key={label} style={{ background: '#fff', borderRadius: 12, padding: '20px 24px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-            <div style={{ fontSize: 28, marginBottom: 8 }}>{icon}</div>
-            <div style={{ fontSize: 32, fontWeight: 800, color }}>{value}</div>
-            <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>{label}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 32 }}>
+        {statCards.map(({ label, value, color }) => (
+          <div key={label} style={{ ...cardSm, padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+            <div style={{ fontSize: 36, fontWeight: 900, color, fontFamily: N.fontDisplay, lineHeight: 1 }}>{value}</div>
+            <div style={{ fontSize: 11, color: N.muted, marginTop: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</div>
           </div>
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 28 }}>
-        <div style={{ background: '#fff', borderRadius: 12, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700 }}>🏙️ Top Destinations</h3>
-          <ResponsiveContainer width="100%" height={220}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 32 }}>
+        <div style={{ ...card, padding: 24 }}>
+          <h3 style={{ margin: '0 0 20px', fontSize: 18, fontWeight: 800, color: N.fg, fontFamily: N.fontDisplay }}>Top Destinations</h3>
+          <ResponsiveContainer width="100%" height={260}>
             <BarChart data={stats.topCities} layout="vertical" margin={{ left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis type="number" tick={{ fontSize: 11 }} />
-              <YAxis type="category" dataKey="city" tick={{ fontSize: 11 }} width={80} />
-              <Tooltip formatter={v => [`${v} trips`, 'Count']} />
-              <Bar dataKey="count" fill="#1D9E75" radius={[0, 4, 4, 0]} />
+              <CartesianGrid strokeDasharray="3 3" stroke={`rgb(163,177,198,0.2)`} horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: N.muted, fontWeight: 600 }} axisLine={false} tickLine={false} />
+              <YAxis type="category" dataKey="city" tick={{ fontSize: 11, fill: N.fg, fontWeight: 700 }} width={80} axisLine={false} tickLine={false} />
+              <Tooltip formatter={v => [`${v} trips`, 'Count']} cursor={{fill: `rgb(163,177,198,0.1)`}} contentStyle={{ borderRadius: N.radiusInner, border: 'none', boxShadow: N.shadow, background: N.bg, fontWeight: 600, fontFamily: N.font }} />
+              <Bar dataKey="count" fill={N.accent} radius={[0, 4, 4, 0]} barSize={20} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        <div style={{ background: '#fff', borderRadius: 12, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700 }}>📊 Trips by Status</h3>
-          <div style={{ display: 'flex', gap: 12 }}>
+        <div style={{ ...card, padding: 24 }}>
+          <h3 style={{ margin: '0 0 20px', fontSize: 18, fontWeight: 800, color: N.fg, fontFamily: N.fontDisplay }}>Trips by Status</h3>
+          <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
             {stats.tripsByStatus.map(({ status, count }) => (
-              <div key={status} style={{ flex: 1, textAlign: 'center', padding: '20px 12px', background: '#f8faf9', borderRadius: 10 }}>
-                <div style={{ fontSize: 28, fontWeight: 800, color: STATUS_COLOR[status] || '#888' }}>{count}</div>
-                <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{status}</div>
+              <div key={status} style={{ flex: 1, textAlign: 'center', padding: '20px 12px', background: N.bg, boxShadow: N.shadowInsetSm, borderRadius: N.radiusInner }}>
+                <div style={{ fontSize: 28, fontWeight: 900, color: STATUS_COLOR[status] || N.muted, fontFamily: N.fontDisplay }}>{count}</div>
+                <div style={{ fontSize: 10, color: N.muted, marginTop: 8, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5 }}>{status}</div>
               </div>
             ))}
           </div>
-          <h3 style={{ margin: '20px 0 12px', fontSize: 15, fontWeight: 700 }}>💰 Budget Stats</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          
+          <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 800, color: N.fg, textTransform: 'uppercase', letterSpacing: 0.5 }}>Budget Stats</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {[['Average', stats.budgetStats.average], ['Max', stats.budgetStats.max], ['Min', stats.budgetStats.min], ['Total', stats.budgetStats.total]].map(([l, v]) => (
-              <div key={l} style={{ background: '#f8faf9', borderRadius: 8, padding: '10px 12px' }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#1D9E75' }}>${Number(v).toLocaleString()}</div>
-                <div style={{ fontSize: 11, color: '#888' }}>{l} Budget</div>
+              <div key={l} style={{ background: N.bg, boxShadow: N.shadowInsetSm, borderRadius: N.radiusInner, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: 11, color: N.muted, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5 }}>{l}</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: N.accentSecondary }}>₹{Number(v).toLocaleString()}</div>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-        <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f0f0' }}>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>👥 All Users ({users.length})</h3>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 24 }}>
+        <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '20px 24px', borderBottom: `1px solid rgb(163,177,198,0.2)`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: N.fg, fontFamily: N.fontDisplay }}>All Users</h3>
+            <span style={{ fontSize: 12, color: N.muted, fontWeight: 800, background: N.bg, boxShadow: N.shadowInsetSm, padding: '4px 12px', borderRadius: N.radiusPill }}>{users.length} Total</span>
           </div>
-          <div style={{ overflowX: 'auto', maxHeight: 340, overflowY: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-              <thead style={{ position: 'sticky', top: 0, background: '#f8faf9' }}>
-                <tr>{['Name', 'Email', 'City', 'Trips', 'Joined'].map(h => <th key={h} style={{ padding: '10px 14px', textAlign: 'left', color: '#666', fontWeight: 600 }}>{h}</th>)}</tr>
-              </thead>
-              <tbody>
-                {users.map(u => (
-                  <tr key={u.id} style={{ borderTop: '1px solid #f5f5f5' }}>
-                    <td style={{ padding: '10px 14px', fontWeight: 600 }}>{u.firstName} {u.lastName}{u.isAdmin && <span style={{ marginLeft: 6, background: '#1D9E75', color: '#fff', fontSize: 10, padding: '1px 5px', borderRadius: 4 }}>Admin</span>}</td>
-                    <td style={{ padding: '10px 14px', color: '#888' }}>{u.email}</td>
-                    <td style={{ padding: '10px 14px', color: '#888' }}>{u.city || '—'}</td>
-                    <td style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700, color: '#1D9E75' }}>{u._count?.trips || 0}</td>
-                    <td style={{ padding: '10px 14px', color: '#aaa' }}>{new Date(u.createdAt).toLocaleDateString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ maxHeight: 400, overflowY: 'auto', background: N.bg }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.5fr 1fr 0.5fr 1fr', gap: 12, padding: '12px 24px', borderBottom: `2px solid rgb(163,177,198,0.2)`, fontSize: 10, fontWeight: 800, color: N.muted, textTransform: 'uppercase', letterSpacing: 0.5, position: 'sticky', top: 0, background: N.bg, zIndex: 10 }}>
+              <div>Name</div>
+              <div>Email</div>
+              <div>City</div>
+              <div style={{ textAlign: 'center' }}>Trips</div>
+              <div style={{ textAlign: 'right' }}>Joined</div>
+            </div>
+            {users.map((u, idx) => (
+              <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.5fr 1fr 0.5fr 1fr', gap: 12, padding: '14px 24px', borderBottom: idx < users.length - 1 ? `1px dashed rgb(163,177,198,0.3)` : 'none', alignItems: 'center', fontSize: 13 }}>
+                <div style={{ fontWeight: 700, color: N.fg, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {u.firstName} {u.lastName}
+                  {u.isAdmin && <span style={{ background: N.accent, color: N.bg, fontSize: 9, padding: '2px 6px', borderRadius: 4, fontWeight: 800, textTransform: 'uppercase' }}>Admin</span>}
+                </div>
+                <div style={{ color: N.muted, fontWeight: 500 }}>{u.email}</div>
+                <div style={{ color: N.muted, fontWeight: 600 }}>{u.city || '—'}</div>
+                <div style={{ textAlign: 'center', fontWeight: 800, color: N.accentSecondary }}>{u._count?.trips || 0}</div>
+                <div style={{ textAlign: 'right', color: N.muted, fontWeight: 500, fontSize: 12 }}>{new Date(u.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })}</div>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f0f0' }}>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>✈️ Recent Trips</h3>
+        <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '20px 24px', borderBottom: `1px solid rgb(163,177,198,0.2)'` }}>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: N.fg, fontFamily: N.fontDisplay }}>Recent Trips</h3>
           </div>
-          <div style={{ maxHeight: 340, overflowY: 'auto' }}>
-            {stats.recentTrips.map(trip => (
-              <div key={trip.id} style={{ padding: '12px 20px', borderBottom: '1px solid #f8f8f8' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ maxHeight: 400, overflowY: 'auto', background: N.bg, padding: '12px 24px' }}>
+            {stats.recentTrips.map((trip, idx) => (
+              <div key={trip.id} style={{ padding: '16px 0', borderBottom: idx < stats.recentTrips.length - 1 ? `1px dashed rgb(163,177,198,0.3)` : 'none' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: '#1a1a1a' }}>{trip.name}</div>
-                    <div style={{ fontSize: 11, color: '#aaa' }}>{trip.user?.firstName} {trip.user?.lastName} · {trip.user?.email}</div>
+                    <div style={{ fontWeight: 800, fontSize: 14, color: N.fg, marginBottom: 4 }}>{trip.name}</div>
+                    <div style={{ fontSize: 12, color: N.muted, fontWeight: 500 }}>{trip.user?.firstName} {trip.user?.lastName} · {trip.user?.email}</div>
                   </div>
-                  <span style={{ background: '#e8f5f0', color: '#1D9E75', fontSize: 10, padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>{trip.status}</span>
+                  <span style={{ background: N.bg, boxShadow: N.shadowSm, color: STATUS_COLOR[trip.status] || N.muted, fontSize: 10, padding: '4px 10px', borderRadius: N.radiusPill, fontWeight: 800, textTransform: 'uppercase' }}>{trip.status}</span>
                 </div>
               </div>
             ))}
+            {stats.recentTrips.length === 0 && (
+              <div style={{ textAlign: 'center', color: N.muted, padding: '40px 0', fontSize: 13, fontWeight: 600 }}>No trips created yet.</div>
+            )}
           </div>
         </div>
       </div>
